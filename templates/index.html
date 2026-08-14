@@ -3,337 +3,473 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EV Charging Station Monitor</title>
+    <title>EV Charging Station | Intelligent Anomaly Monitor</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>⚡ EV Charging Station Monitor</h1>
-            <p>Real-time Anomaly Detection and Early Warning System</p>
-        </header>
+    <!-- Top Fixed Header -->
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="brand">
+                    <div class="brand-logo">⚡</div>
+                    <div class="brand-text">
+                        <h1>Smart EV Charging Monitor</h1>
+                        <p>IoT Telemetry & ML Isolation Forest Early-Warning Engine</p>
+                    </div>
+                </div>
+                <div class="pulse-indicator">
+                    <div class="pulse-dot"></div>
+                    <span id="liveStatusBadge">SYSTEM ACTIVE</span>
+                </div>
+            </div>
+        </div>
+    </header>
 
+    <div class="container">
+        <!-- Navigation Tabs -->
         <nav class="nav-tabs">
-            <a href="/" class="nav-tab active">Dashboard</a>
-            <a href="/graph" class="nav-tab">Graph</a>
+            <a href="/" class="nav-tab active">
+                <span>📊</span> Real-Time Dashboard
+            </a>
+            <a href="/graph" class="nav-tab">
+                <span>📈</span> Live Telemetry Graphs
+            </a>
         </nav>
 
-        <main class="main-content">
-            <!-- Status Section -->
-            <section class="section status-section">
-                <h2>System Status</h2>
-                <div class="status-grid">
-                    <div class="status-card">
-                        <div class="status-label">Data Source</div>
-                        <div id="dataSource" class="status-value" style="color: #666;">Loading...</div>
-                    </div>
-                    <div class="status-card">
-                        <div class="status-label">System State</div>
-                        <div id="systemState" class="status-value" style="color: #666;">Loading...</div>
-                    </div>
-                    <div class="status-card">
-                        <div class="status-label">ML Status</div>
-                        <div id="mlStatus" class="status-value" style="color: #666;">Loading...</div>
-                    </div>
-                    <div class="status-card">
-                        <div class="status-label">Last Update</div>
-                        <div id="lastUpdate" class="status-value" style="color: #666;">Loading...</div>
+        <main>
+            <!-- Early Warning Hero Banner -->
+            <section class="section" style="padding: 0; background: transparent; border: none; box-shadow: none;">
+                <div id="severityBanner" class="severity-banner alert-normal">
+                    <div class="severity-icon-badge" id="severityIcon">🟢</div>
+                    <div style="flex: 1;">
+                        <div class="severity-title-row">
+                            <span class="severity-badge" id="severityTitle">NORMAL</span>
+                            <span style="font-size: 0.8rem; color: var(--text-dim);" id="severityTimestamp"></span>
+                        </div>
+                        <div class="severity-reason-text" id="severityReason">Initializing monitoring system...</div>
                     </div>
                 </div>
             </section>
 
-            <!-- Severity Alert Section -->
-            <section class="section severity-section">
-                <div id="severityAlert" class="severity-alert alert-normal">
-                    <span class="severity-icon">🟢</span>
-                    <div class="severity-content">
-                        <div class="severity-title">NORMAL</div>
-                        <div class="severity-reason">All parameters within normal range</div>
+            <!-- Live Telemetry Grid -->
+            <section class="section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <span>⚡</span> Live Sensor Telemetry
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);" id="dataSourceBadge">
+                        Loading...
+                    </div>
+                </div>
+
+                <div class="telemetry-grid">
+                    <div class="telemetry-card telemetry-voltage">
+                        <div class="telemetry-header">
+                            <span class="telemetry-label">Voltage</span>
+                            <span class="telemetry-icon">🔌</span>
+                        </div>
+                        <div class="telemetry-value-wrap">
+                            <span class="telemetry-value" id="voltageVal">--</span>
+                            <span class="telemetry-unit">V</span>
+                        </div>
+                        <div class="telemetry-footer">
+                            <span>Nominal: 12.00V</span>
+                            <span id="voltageTrend">Stable</span>
+                        </div>
+                    </div>
+
+                    <div class="telemetry-card telemetry-current">
+                        <div class="telemetry-header">
+                            <span class="telemetry-label">Current Draw</span>
+                            <span class="telemetry-icon">⚡</span>
+                        </div>
+                        <div class="telemetry-value-wrap">
+                            <span class="telemetry-value" id="currentVal">--</span>
+                            <span class="telemetry-unit">A</span>
+                        </div>
+                        <div class="telemetry-footer">
+                            <span>Nominal: 7.00A</span>
+                            <span id="currentTrend">Stable</span>
+                        </div>
+                    </div>
+
+                    <div class="telemetry-card telemetry-power">
+                        <div class="telemetry-header">
+                            <span class="telemetry-label">Calculated Power</span>
+                            <span class="telemetry-icon">💡</span>
+                        </div>
+                        <div class="telemetry-value-wrap">
+                            <span class="telemetry-value" id="powerVal">--</span>
+                            <span class="telemetry-unit">W</span>
+                        </div>
+                        <div class="telemetry-footer">
+                            <span>P = V × I</span>
+                            <span>EV Load</span>
+                        </div>
+                    </div>
+
+                    <div class="telemetry-card telemetry-ml">
+                        <div class="telemetry-header">
+                            <span class="telemetry-label">Isolation Forest Score</span>
+                            <span class="telemetry-icon">🧠</span>
+                        </div>
+                        <div class="telemetry-value-wrap">
+                            <span class="telemetry-value" id="anomalyScoreVal">--</span>
+                        </div>
+                        <div class="telemetry-footer">
+                            <span id="mlPredictionText">ML Status: Loading...</span>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- Live Measurements Section -->
-            <section class="section measurements-section">
-                <h2>Live Measurements</h2>
-                <div class="measurements-grid">
-                    <div class="measurement-card">
-                        <div class="measurement-icon">🔌</div>
-                        <div class="measurement-label">Voltage</div>
-                        <div id="voltageValue" class="measurement-value">--</div>
-                        <div class="measurement-unit">V</div>
+            <!-- Simulation Controls & Diagnostic Tools -->
+            <section class="section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <span>🛠️</span> Live Simulation Controls & Diagnostics
                     </div>
-                    <div class="measurement-card">
-                        <div class="measurement-icon">⚡</div>
-                        <div class="measurement-label">Current</div>
-                        <div id="currentValue" class="measurement-value">--</div>
-                        <div class="measurement-unit">A</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">
+                        Test anomaly response & email alert triggers
                     </div>
-                    <div class="measurement-card">
-                        <div class="measurement-icon">💡</div>
-                        <div class="measurement-label">Power</div>
-                        <div id="powerValue" class="measurement-value">--</div>
-                        <div class="measurement-unit">W</div>
+                </div>
+
+                <div class="sim-controls-bar">
+                    <div class="sim-btn-group">
+                        <button class="btn btn-cyan" onclick="setSimMode('stable')">
+                            🟢 Normal Stable Mode
+                        </button>
+                        <button class="btn btn-amber" onclick="setSimMode('gradual')">
+                            🟡 Trigger Gradual Anomaly
+                        </button>
+                        <button class="btn btn-danger" onclick="setSimMode('abrupt')">
+                            🚨 Trigger Abrupt Spike
+                        </button>
+                        <button class="btn" onclick="setSimMode('fail')">
+                            🔴 Simulate Sensor Fault
+                        </button>
                     </div>
-                    <div class="measurement-card">
-                        <div class="measurement-icon">📊</div>
-                        <div class="measurement-label">Anomaly Score</div>
-                        <div id="anomalyValue" class="measurement-value">--</div>
-                        <div class="measurement-unit"></div>
+
+                    <div style="margin-left: auto; display: flex; gap: 8px;">
+                        <button class="btn btn-cyan" onclick="triggerTestEmail()">
+                            📧 Send Diagnostic Email
+                        </button>
                     </div>
                 </div>
             </section>
 
-            <!-- ML Information Section -->
-            <section class="section ml-section">
-                <h2>Anomaly Detection Status</h2>
-                <div id="mlInfo" class="info-box">
-                    <p>Loading ML status...</p>
-                </div>
-            </section>
+            <!-- System Status & Aggregated Statistics -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 24px;">
+                <section class="section" style="margin-bottom: 0;">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <span>🖥️</span> System Architecture Status
+                        </div>
+                    </div>
 
-            <!-- Statistics Section -->
-            <section class="section stats-section">
-                <h2>Statistics</h2>
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-label">Avg Voltage</div>
-                        <div id="statAvgVoltage" class="stat-value">--</div>
+                    <div class="status-grid">
+                        <div class="status-card">
+                            <div class="status-label">Data Source</div>
+                            <div class="status-value" id="statusDataSource" style="color: var(--neon-cyan);">--</div>
+                        </div>
+                        <div class="status-card">
+                            <div class="status-label">ML Model Status</div>
+                            <div class="status-value" id="statusMlModel" style="color: var(--neon-green);">--</div>
+                        </div>
+                        <div class="status-card">
+                            <div class="status-label">Cache Persistence</div>
+                            <div class="status-value" id="statusCache">--</div>
+                        </div>
+                        <div class="status-card">
+                            <div class="status-label">Email Cooldown</div>
+                            <div class="status-value" id="statusEmail">--</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Avg Current</div>
-                        <div id="statAvgCurrent" class="stat-value">--</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Max Power</div>
-                        <div id="statMaxPower" class="stat-value">--</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Total Readings</div>
-                        <div id="statTotalReadings" class="stat-value">--</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Warnings</div>
-                        <div id="statWarnings" class="stat-value warning-text">--</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-label">Critical</div>
-                        <div id="statCritical" class="stat-value critical-text">--</div>
-                    </div>
-                </div>
-            </section>
+                </section>
 
-            <!-- Alert History Section -->
-            <section class="section history-section">
-                <h2>Recent Alert History</h2>
-                <div class="history-controls">
-                    <button id="refreshBtn" class="btn btn-primary">Refresh</button>
-                    <button id="clearBtn" class="btn btn-secondary">Clear Log</button>
+                <section class="section" style="margin-bottom: 0;">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <span>📊</span> Session Statistics Summary
+                        </div>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div class="stat-label">Avg Voltage</div>
+                            <div class="stat-val" id="statAvgV">--</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Avg Current</div>
+                            <div class="stat-val" id="statAvgI">--</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Peak Power</div>
+                            <div class="stat-val" id="statMaxP">--</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Total Readings</div>
+                            <div class="stat-val" id="statTotalReadings">--</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Warnings</div>
+                            <div class="stat-val" style="color: var(--neon-amber);" id="statWarnings">--</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Criticals</div>
+                            <div class="stat-val" style="color: var(--neon-red);" id="statCriticals">--</div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Real-Time Alert History Log Table -->
+            <section class="section">
+                <div class="section-header">
+                    <div class="section-title">
+                        <span>📜</span> Telemetry Log Stream & Alert History
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="btn" id="filterAllBtn" onclick="setLogFilter('all')" style="padding: 6px 14px; font-size: 0.8rem;">Show All Logs</button>
+                        <button class="btn" id="filterAlertsBtn" onclick="setLogFilter('alerts')" style="padding: 6px 14px; font-size: 0.8rem;">Alerts Only</button>
+                        <button class="btn btn-danger" onclick="clearLogHistory()" style="padding: 6px 14px; font-size: 0.8rem;">Clear Log</button>
+                    </div>
                 </div>
-                <div id="alertHistory" class="alert-history">
-                    <p>Loading alert history...</p>
+
+                <div class="table-container">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Severity</th>
+                                <th>Voltage</th>
+                                <th>Current</th>
+                                <th>Power</th>
+                                <th>ML Score</th>
+                                <th>Email Alert</th>
+                                <th>Source</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr>
+                                <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                                    Loading history log stream...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </section>
         </main>
 
         <footer>
-            <p>EV Charging Station Monitoring System | Powered by Isolation Forest + Trend Analysis</p>
-            <p>⚠️ This system detects abnormal charging behavior for early warning, not battery failure prediction.</p>
+            <p><strong>IoT-Based Smart EV Charging Station Monitoring & Early-Warning System</strong></p>
+            <p style="margin-top: 4px; color: var(--text-dim);">
+                Isolation Forest ML + Multi-Variable Trend Analysis | Designed for Early Risk Reduction
+            </p>
         </footer>
     </div>
 
     <script>
-        // Configuration
-        const UPDATE_INTERVAL = 2000; // Update every 2 seconds
-        const HISTORY_LIMIT = 20; // Show last 20 alert entries
+        const UPDATE_INTERVAL = 2000;
+        let activeLogFilter = 'all';
+        let isPolling = true;
 
-        let updateTimer = null;
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', () => {
             updateDashboard();
-            updateTimer = setInterval(updateDashboard, UPDATE_INTERVAL);
-            
-            document.getElementById('refreshBtn').addEventListener('click', updateDashboard);
-            document.getElementById('clearBtn').addEventListener('click', clearLog);
+            setInterval(updateDashboard, UPDATE_INTERVAL);
         });
 
-        // Update dashboard
         function updateDashboard() {
-            // Fetch latest data
+            if (!isPolling) return;
+
+            // Fetch latest telemetry
             fetch('/api/latest')
-                .then(r => r.json())
+                .then(res => res.json())
                 .then(data => {
-                    if (data.status === 'ok') {
-                        updateLatestState(data.data);
+                    if (data.status === 'ok' && data.data) {
+                        renderLatestState(data.data);
                     }
                 })
-                .catch(err => console.error('Error fetching latest:', err));
+                .catch(err => console.error('Error fetching latest state:', err));
 
             // Fetch statistics
             fetch('/api/statistics')
-                .then(r => r.json())
+                .then(res => res.json())
                 .then(data => {
-                    if (data.status === 'ok') {
-                        updateStatistics(data.data);
+                    if (data.status === 'ok' && data.data) {
+                        renderStatistics(data.data);
                     }
                 })
                 .catch(err => console.error('Error fetching statistics:', err));
 
-            // Fetch history
-            fetch(`/api/history?limit=${HISTORY_LIMIT}`)
-                .then(r => r.json())
+            // Fetch system status
+            fetch('/api/status')
+                .then(res => res.json())
                 .then(data => {
                     if (data.status === 'ok') {
-                        updateAlertHistory(data.data);
+                        renderSystemStatus(data);
+                    }
+                })
+                .catch(err => console.error('Error fetching status:', err));
+
+            // Fetch history log
+            fetchHistoryLog();
+        }
+
+        function renderLatestState(state) {
+            document.getElementById('voltageVal').textContent = parseFloat(state.voltage || 0).toFixed(2);
+            document.getElementById('currentVal').textContent = parseFloat(state.current || 0).toFixed(2);
+            document.getElementById('powerVal').textContent = parseFloat(state.power || 0).toFixed(2);
+            document.getElementById('anomalyScoreVal').textContent = parseFloat(state.anomaly_score || 0).toFixed(4);
+
+            document.getElementById('mlPredictionText').textContent = `ML Pred: ${state.prediction || 'Normal'}`;
+
+            // Update severity banner
+            const banner = document.getElementById('severityBanner');
+            const icon = document.getElementById('severityIcon');
+            const title = document.getElementById('severityTitle');
+            const reason = document.getElementById('severityReason');
+            const timeEl = document.getElementById('severityTimestamp');
+
+            const severity = (state.severity || 'NORMAL').toUpperCase();
+            banner.className = `severity-banner alert-${severity.toLowerCase()}`;
+            title.textContent = severity;
+            reason.textContent = state.reason || 'All parameters operating within normal safety limits.';
+            timeEl.textContent = state.timestamp ? new Date(state.timestamp).toLocaleTimeString() : '';
+
+            if (severity === 'CRITICAL') {
+                icon.textContent = '🚨';
+            } else if (severity === 'WARNING') {
+                icon.textContent = '⚠️';
+            } else {
+                icon.textContent = '🟢';
+            }
+
+            // Data source badge
+            const dsBadge = document.getElementById('dataSourceBadge');
+            if (state.is_live) {
+                dsBadge.innerHTML = '<span style="color: var(--neon-green); font-weight:700;">🟢 LIVE SENSOR TELEMETRY</span>';
+            } else if (state.data_source === 'stale_cache') {
+                dsBadge.innerHTML = '<span style="color: var(--neon-amber); font-weight:700;">🟡 STALE CACHED DATA</span>';
+            } else {
+                dsBadge.innerHTML = '<span style="color: var(--neon-red); font-weight:700;">🔴 SENSOR DATA UNAVAILABLE</span>';
+            }
+        }
+
+        function renderStatistics(stats) {
+            if (!stats.voltage) return;
+            document.getElementById('statAvgV').textContent = `${stats.voltage.avg.toFixed(1)} V`;
+            document.getElementById('statAvgI').textContent = `${stats.current.avg.toFixed(1)} A`;
+            document.getElementById('statMaxP').textContent = `${stats.power.max.toFixed(1)} W`;
+            document.getElementById('statTotalReadings').textContent = stats.total_readings;
+            document.getElementById('statWarnings').textContent = stats.alerts.warnings;
+            document.getElementById('statCriticals').textContent = stats.alerts.criticals;
+        }
+
+        function renderSystemStatus(data) {
+            document.getElementById('statusDataSource').textContent = data.latest_state.data_source || 'sensor';
+            document.getElementById('statusMlModel').textContent = data.latest_state.ml_status === 'ok' ? '✓ Trained' : 'Error';
+            
+            const cache = data.cache || {};
+            document.getElementById('statusCache').textContent = cache.status === 'fresh' ? 'Fresh (Synced)' : (cache.status === 'stale' ? 'Stale' : 'Unavailable');
+            document.getElementById('statusCache').style.color = cache.status === 'fresh' ? 'var(--neon-green)' : 'var(--neon-amber)';
+
+            const email = data.email || {};
+            document.getElementById('statusEmail').textContent = email.enabled ? (email.warning_cooldown_active || email.critical_cooldown_active ? 'Cooldown Active' : 'Ready') : 'Disabled';
+            document.getElementById('statusEmail').style.color = email.enabled ? 'var(--neon-cyan)' : 'var(--text-muted)';
+        }
+
+        function fetchHistoryLog() {
+            fetch('/api/history?limit=30')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'ok' && data.data) {
+                        renderHistoryTable(data.data);
                     }
                 })
                 .catch(err => console.error('Error fetching history:', err));
         }
 
-        // Update latest state
-        function updateLatestState(state) {
-            // Update measurements
-            document.getElementById('voltageValue').textContent = state.voltage.toFixed(2);
-            document.getElementById('currentValue').textContent = state.current.toFixed(2);
-            document.getElementById('powerValue').textContent = state.power.toFixed(2);
-            document.getElementById('anomalyValue').textContent = state.anomaly_score.toFixed(4);
-
-            // Update data source indicator
-            const sourceElement = document.getElementById('dataSource');
-            if (state.is_live) {
-                sourceElement.innerHTML = '<span style="color: #4caf50;">🟢 LIVE SENSOR DATA</span>';
-            } else if (state.data_source === 'stale_cache') {
-                sourceElement.innerHTML = '<span style="color: #ff9800;">🟡 STALE / CACHED DATA</span>';
-            } else {
-                sourceElement.innerHTML = '<span style="color: #f44336;">🔴 SENSOR DATA UNAVAILABLE</span>';
+        function renderHistoryTable(rows) {
+            const tbody = document.getElementById('historyTableBody');
+            
+            let filteredRows = rows;
+            if (activeLogFilter === 'alerts') {
+                filteredRows = rows.filter(r => r.severity && r.severity !== 'NORMAL');
             }
 
-            // Update system state
-            document.getElementById('systemState').textContent = state.severity;
-            document.getElementById('systemState').style.color = getSeverityColor(state.severity);
-
-            // Update ML status
-            const mlStatus = state.ml_status === 'ok' ? '✓ OK' : '✗ Error';
-            document.getElementById('mlStatus').textContent = mlStatus;
-            document.getElementById('mlStatus').style.color = state.ml_status === 'ok' ? '#4caf50' : '#f44336';
-
-            // Update last update time
-            const timestamp = new Date(state.timestamp);
-            document.getElementById('lastUpdate').textContent = timestamp.toLocaleTimeString();
-
-            // Update severity alert
-            updateSeverityAlert(state.severity, state.reason);
-
-            // Update ML info
-            updateMLInfo(state);
-        }
-
-        // Update severity alert display
-        function updateSeverityAlert(severity, reason) {
-            const alertDiv = document.getElementById('severityAlert');
-            alertDiv.className = 'severity-alert alert-' + severity.toLowerCase();
-            
-            let icon = '🟢';
-            if (severity === 'WARNING') {
-                icon = '🟡';
-            } else if (severity === 'CRITICAL') {
-                icon = '🔴';
-            }
-            
-            alertDiv.innerHTML = `
-                <span class="severity-icon">${icon}</span>
-                <div class="severity-content">
-                    <div class="severity-title">${severity}</div>
-                    <div class="severity-reason">${reason}</div>
-                </div>
-            `;
-        }
-
-        // Update ML info
-        function updateMLInfo(state) {
-            const mlDiv = document.getElementById('mlInfo');
-            mlDiv.innerHTML = `
-                <p><strong>Prediction:</strong> ${state.prediction}</p>
-                <p><strong>Anomaly Score:</strong> ${state.anomaly_score.toFixed(4)}</p>
-                <p><strong>Data Source:</strong> ${state.data_source}</p>
-                <p><strong>Last Reading:</strong> ${new Date(state.timestamp).toLocaleString()}</p>
-            `;
-        }
-
-        // Update statistics
-        function updateStatistics(stats) {
-            if (stats.total_readings === 0) return;
-            
-            document.getElementById('statAvgVoltage').textContent = stats.voltage.avg.toFixed(2) + ' V';
-            document.getElementById('statAvgCurrent').textContent = stats.current.avg.toFixed(2) + ' A';
-            document.getElementById('statMaxPower').textContent = stats.power.max.toFixed(2) + ' W';
-            document.getElementById('statTotalReadings').textContent = stats.total_readings;
-            document.getElementById('statWarnings').textContent = stats.alerts.warnings;
-            document.getElementById('statCritical').textContent = stats.alerts.criticals;
-        }
-
-        // Update alert history
-        function updateAlertHistory(history) {
-            const historyDiv = document.getElementById('alertHistory');
-            
-            if (!history || history.length === 0) {
-                historyDiv.innerHTML = '<p class="no-data">No history data available</p>';
+            if (filteredRows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">No ${activeLogFilter === 'alerts' ? 'alert' : ''} entries in log history</td></tr>`;
                 return;
             }
-            
-            let html = '<table class="history-table"><thead><tr>' +
-                '<th>Time</th><th>Severity</th><th>Voltage</th><th>Current</th>' +
-                '<th>Power</th><th>Anomaly</th><th>Email</th></tr></thead><tbody>';
-            
-            // Show only anomaly/warning/critical entries
-            const filteredHistory = history.filter(h => h.severity && h.severity !== 'NORMAL');
-            
-            if (filteredHistory.length === 0) {
-                html += '<tr><td colspan="7" class="no-data">No alerts in history</td></tr>';
-            } else {
-                filteredHistory.slice(0, HISTORY_LIMIT).forEach(entry => {
-                    const severityClass = 'severity-' + (entry.severity || 'unknown').toLowerCase();
-                    html += `<tr class="${severityClass}">
-                        <td>${entry.timestamp || '-'}</td>
-                        <td>${entry.severity || '-'}</td>
-                        <td>${parseFloat(entry.voltage || 0).toFixed(2)}V</td>
-                        <td>${parseFloat(entry.current || 0).toFixed(2)}A</td>
-                        <td>${parseFloat(entry.power || 0).toFixed(2)}W</td>
-                        <td>${parseFloat(entry.anomaly_score || 0).toFixed(4)}</td>
-                        <td>${entry.email_alert_sent === 'Yes' ? '✓' : '-'}</td>
-                    </tr>`;
-                });
-            }
-            
-            html += '</tbody></table>';
-            historyDiv.innerHTML = html;
+
+            tbody.innerHTML = filteredRows.map(r => {
+                const sev = (r.severity || 'NORMAL').toUpperCase();
+                const trClass = sev === 'CRITICAL' ? 'tr-critical' : (sev === 'WARNING' ? 'tr-warning' : '');
+                const badgeClass = sev === 'CRITICAL' ? 'badge-critical' : (sev === 'WARNING' ? 'badge-warning' : 'badge-normal');
+                const emailSent = r.email_alert_sent === 'Yes';
+
+                return `<tr class="${trClass}">
+                    <td style="font-family: monospace; color: var(--text-muted);">${r.timestamp || '-'}</td>
+                    <td><span class="badge ${badgeClass}">${sev}</span></td>
+                    <td style="color: var(--neon-cyan); font-weight: 600;">${parseFloat(r.voltage || 0).toFixed(2)} V</td>
+                    <td style="color: var(--neon-amber); font-weight: 600;">${parseFloat(r.current || 0).toFixed(2)} A</td>
+                    <td style="color: var(--neon-green); font-weight: 600;">${parseFloat(r.power || 0).toFixed(2)} W</td>
+                    <td style="font-family: monospace;">${parseFloat(r.anomaly_score || 0).toFixed(4)}</td>
+                    <td>${emailSent ? '<span style="color: var(--neon-cyan); font-weight:bold;">📧 Sent</span>' : '<span style="color: var(--text-dim);">-</span>'}</td>
+                    <td style="font-size: 0.8rem; color: var(--text-muted);">${r.data_source || 'sensor'}</td>
+                </tr>`;
+            }).join('');
         }
 
-        // Get severity color
-        function getSeverityColor(severity) {
-            switch(severity) {
-                case 'CRITICAL':
-                    return '#f44336';
-                case 'WARNING':
-                    return '#ff9800';
-                default:
-                    return '#4caf50';
-            }
+        function setLogFilter(filter) {
+            activeLogFilter = filter;
+            document.getElementById('filterAllBtn').className = filter === 'all' ? 'btn btn-cyan' : 'btn';
+            document.getElementById('filterAlertsBtn').className = filter === 'alerts' ? 'btn btn-cyan' : 'btn';
+            fetchHistoryLog();
         }
 
-        // Clear log (placeholder - would need backend support)
-        function clearLog() {
-            if (confirm('Clear log file? This action cannot be undone.')) {
-                alert('Log clearing requires backend support - contact administrator');
-            }
+        function setSimMode(mode) {
+            fetch('/api/simulation-mode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: mode })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(`Simulation mode set to: ${mode.toUpperCase()}`);
+                updateDashboard();
+            })
+            .catch(err => alert('Failed to set simulation mode: ' + err));
         }
 
-        // Cleanup
-        window.addEventListener('beforeunload', function() {
-            if (updateTimer) clearInterval(updateTimer);
-        });
+        function triggerTestEmail() {
+            if (!confirm("Send a diagnostic test email to configured address?")) return;
+            fetch('/api/test-email', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        alert("✅ Success: " + data.message);
+                    } else {
+                        alert("❌ Error: " + (data.message || data.error));
+                    }
+                })
+                .catch(err => alert("Error triggering test email: " + err));
+        }
+
+        function clearLogHistory() {
+            if (!confirm("Are you sure you want to clear all history logs?")) return;
+            fetch('/api/clear-history', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    alert("History log cleared.");
+                    fetchHistoryLog();
+                })
+                .catch(err => alert("Failed to clear log: " + err));
+        }
     </script>
 </body>
 </html>

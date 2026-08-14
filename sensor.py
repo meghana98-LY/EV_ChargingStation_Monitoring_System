@@ -73,48 +73,51 @@ class SimulatedSensor(SensorInterface):
             current = self.base_current + noise_i
             
             # Apply anomaly patterns based on mode
-            if self.mode == 'gradual':
+            if self.mode == 'fail':
+                raise SensorException("Simulated hardware failure triggered for testing cache fallback")
+            
+            elif self.mode == 'gradual':
                 if self.read_count > self.anomaly_start_count:
-                    # Gradually increasing current and voltage
-                    progression = min(
-                        (self.read_count - self.anomaly_start_count) / 30,
-                        1.0
-                    )
-                    voltage += progression * 3.0  # Up to +3V
-                    current += progression * 5.0  # Up to +5A
+                    progression = min((self.read_count - self.anomaly_start_count) / 40.0, 1.0)
+                    voltage += progression * 3.5  # Up to +3.5V
+                    current += progression * 5.5  # Up to +5.5A
             
             elif self.mode == 'abrupt':
-                if self.read_count == self.anomaly_start_count:
-                    # Sudden spike
-                    voltage += 2.5
-                    current += 4.0
+                if self.read_count >= self.anomaly_start_count:
+                    voltage += 3.8
+                    current += 6.5
             
             # Clamp to realistic ranges
-            voltage = max(10.0, min(16.0, voltage))
-            current = max(0.0, min(20.0, current))
+            voltage = max(10.0, min(18.0, voltage))
+            current = max(0.0, min(25.0, current))
             
             return (voltage, current)
         
+        except SensorException:
+            raise
         except Exception as e:
             logger.error(f"Simulated sensor read failed: {str(e)}")
             raise SensorException(f"Simulated sensor error: {str(e)}")
     
     def get_status(self) -> str:
         """Get sensor status."""
-        return "SIMULATED"
+        return f"SIMULATED ({self.mode})"
     
     def set_mode(self, mode: str):
         """
         Set simulation mode.
         
         Args:
-            mode: 'stable', 'gradual', or 'abrupt'
+            mode: 'stable', 'gradual', 'abrupt', or 'fail'
         """
-        if mode in ['stable', 'gradual', 'abrupt']:
+        valid_modes = ['stable', 'gradual', 'abrupt', 'fail']
+        if mode in valid_modes:
             self.mode = mode
+            self.read_count = 0  # Reset counter so mode takes immediate effect
+            self.anomaly_start_count = 2  # Trigger early when mode set via UI/API
             logger.info(f"Simulation mode changed to: {mode}")
         else:
-            raise ValueError(f"Invalid mode: {mode}")
+            raise ValueError(f"Invalid mode: {mode}. Must be one of {valid_modes}")
 
 
 class RealSensor(SensorInterface):

@@ -9,6 +9,8 @@ import os
 from config import Config
 from logger import get_logger
 from monitor import get_monitor
+from sensor import get_sensor
+from email_alert import get_email_system
 
 logger = get_logger('flask_app')
 
@@ -116,16 +118,14 @@ def create_app():
             
             readings = []
             with open(Config.LOG_FILE, 'r') as f:
-                reader = csv.DictReader(f)
-                for i, row in enumerate(reader):
-                    if i >= offset and len(readings) < limit:
-                        readings.append(row)
-                    elif len(readings) >= limit:
-                        break
+                rows = list(csv.DictReader(f))
+                rows.reverse()  # Newest entries first!
+                readings = rows[offset : offset + limit]
             
             return jsonify({
                 'status': 'ok',
                 'data': readings,
+                'total': len(rows),
                 'limit': limit,
                 'offset': offset,
                 'timestamp': datetime.now().isoformat()
@@ -136,6 +136,69 @@ def create_app():
                 'status': 'error',
                 'error': str(e)
             }), 500
+
+    @app.route('/api/test-email', methods=['GET', 'POST'])
+    def api_test_email():
+        """Send a diagnostic test email."""
+        try:
+            email_system = get_email_system()
+            success, msg = email_system.send_test_email()
+            status_code = 200 if success else 400
+            return jsonify({
+                'status': 'ok' if success else 'error',
+                'message': msg,
+                'timestamp': datetime.now().isoformat()
+            }), status_code
+        except Exception as e:
+            logger.error(f"API error in /test-email: {str(e)}")
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route('/api/simulation-mode', methods=['GET', 'POST'])
+    def api_simulation_mode():
+        """Get or set simulated sensor mode ('stable', 'gradual', 'abrupt', 'fail')."""
+        try:
+            sensor = get_sensor()
+            if request.method == 'POST':
+                data = request.get_json(silent=True) or request.form
+                mode = data.get('mode', 'stable')
+                if hasattr(sensor, 'set_mode'):
+                    sensor.set_mode(mode)
+                    monitor.early_warning.reset()
+                    return jsonify({
+                        'status': 'ok',
+                        'message': f'Simulation mode changed to "{mode}"',
+                        'mode': mode
+                    })
+                else:
+                    return jsonify({
+                        'status': 'error',
+                        'message': 'Real MCP3008 sensor active. Cannot set simulation mode.'
+                    }), 400
+            
+            current_mode = getattr(sensor, 'mode', 'N/A')
+            return jsonify({
+                'status': 'ok',
+                'mode': current_mode,
+                'sensor_type': Config.SENSOR_TYPE
+            })
+        except Exception as e:
+            logger.error(f"API error in /simulation-mode: {str(e)}")
+            return jsonify({'status': 'error', 'error': str(e)}), 500
+
+    @app.route('/api/clear-history', methods=['POST'])
+    def api_clear_history():
+        """Clear the CSV history log file."""
+        try:
+            if os.path.exists(Config.LOG_FILE):
+                with open(Config.LOG_FILE, 'w') as f:
+                    f.write('timestamp,voltage,current,power,prediction,anomaly_score,severity,email_alert_sent,data_source\n')
+            return jsonify({
+                'status': 'ok',
+                'message': 'History log cleared successfully'
+            })
+        except Exception as e:
+            logger.error(f"API error in /clear-history: {str(e)}")
+            return jsonify({'status': 'error', 'error': str(e)}), 500
     
     @app.route('/api/statistics', methods=['GET'])
     def api_statistics():

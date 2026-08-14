@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 
 # Add project root to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import Config
 from sensor import SimulatedSensor, SensorException
@@ -31,12 +31,12 @@ class TestResults:
     
     def add_pass(self, test_name):
         self.passed += 1
-        print(f"✓ PASS: {test_name}")
+        print(f"[PASS] {test_name}")
     
     def add_fail(self, test_name, reason):
         self.failed += 1
         self.errors.append((test_name, reason))
-        print(f"✗ FAIL: {test_name}")
+        print(f"[FAIL] {test_name}")
         print(f"       Reason: {reason}")
     
     def summary(self):
