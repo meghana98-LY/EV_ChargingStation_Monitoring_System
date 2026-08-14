@@ -3,73 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EV Charging Station | Real-Time Telemetry Graphs</title>
+    <title>EV ChargeGuard | Real-Time Telemetry Graphs</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <header>
+
+    <!-- Sleek Unified Top Navigation -->
+    <nav class="navbar">
         <div class="container">
-            <div class="header-content">
-                <div class="brand">
-                    <div class="brand-logo">📈</div>
-                    <div class="brand-text">
-                        <h1>Telemetry Graphing Station</h1>
-                        <p>Live Voltage, Current & Power Curves</p>
+            <div class="navbar-inner">
+                <a href="/" class="nav-brand">
+                    <div class="nav-logo-icon">📈</div>
+                    <div>
+                        <span class="nav-brand-title">EV ChargeGuard</span>
+                        <span class="nav-brand-sub">Real-Time Telemetry Graphing Station</span>
                     </div>
+                </a>
+
+                <div class="nav-menu">
+                    <a href="/" class="nav-link">
+                        <span>📊</span> Overview
+                    </a>
+                    <a href="/graph" class="nav-link active">
+                        <span>📈</span> Telemetry Graphs
+                    </a>
                 </div>
-                <div class="pulse-indicator">
+
+                <div class="nav-status-pill">
                     <div class="pulse-dot"></div>
                     <span id="graphStatusBadge">LIVE CHART STREAM</span>
                 </div>
             </div>
         </div>
-    </header>
+    </nav>
 
-    <div class="container">
-        <!-- Navigation Tabs -->
-        <nav class="nav-tabs">
-            <a href="/" class="nav-tab">
-                <span>📊</span> Real-Time Dashboard
-            </a>
-            <a href="/graph" class="nav-tab active">
-                <span>📈</span> Live Telemetry Graphs
-            </a>
-        </nav>
+    <main class="container">
+        <div class="dashboard-grid">
 
-        <main>
-            <!-- Graph Controls Bar -->
-            <section class="section">
-                <div class="sim-controls-bar" style="justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <label for="timeRangeSelect" style="font-weight: 600; color: var(--text-muted);">Time Horizon:</label>
-                        <select id="timeRangeSelect" class="btn" style="background: rgba(15, 23, 42, 0.9); outline: none;">
-                            <option value="10">Last 10 Readings</option>
-                            <option value="20" selected>Last 20 Readings</option>
-                            <option value="50">Last 50 Readings</option>
-                            <option value="100">Last 100 Readings</option>
-                        </select>
-                    </div>
-
-                    <div style="display: flex; gap: 10px;">
-                        <button id="pauseBtn" class="btn btn-cyan" onclick="togglePause()">
-                            <span>⏸️</span> Pause Graph Stream
-                        </button>
-                        <button class="btn" onclick="downloadCSV()">
-                            <span>💾</span> Export Telemetry CSV
-                        </button>
-                    </div>
+            <!-- Control Bar -->
+            <div class="control-drawer-card">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <label for="timeRangeSelect" style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Time Horizon:</label>
+                    <select id="timeRangeSelect" class="btn-pill" style="background: var(--bg-card-inner); outline: none;">
+                        <option value="10">Last 10 Readings</option>
+                        <option value="20" selected>Last 20 Readings</option>
+                        <option value="50">Last 50 Readings</option>
+                        <option value="100">Last 100 Readings</option>
+                    </select>
                 </div>
-            </section>
 
-            <!-- Voltage & Current Grid -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px;">
+                <div style="display: flex; gap: 10px;">
+                    <button id="pauseBtn" class="btn-pill btn-pill-cyan" onclick="togglePause()">
+                        <span>⏸️</span> Pause Stream
+                    </button>
+                    <button class="btn-pill" onclick="downloadCSV()">
+                        <span>💾</span> Export CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- Voltage & Current Row -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 24px;">
                 <div class="graph-card">
-                    <div class="section-header">
-                        <div class="section-title" style="color: var(--neon-cyan);">
-                            <span>🔌</span> Voltage vs Time (Volts)
-                        </div>
-                        <span style="font-size: 0.85rem; color: var(--text-muted);" id="latestVoltageLabel">-- V</span>
+                    <div class="card-title">
+                        <span style="color: var(--cyan-voltage);">🔌 Voltage vs Time (Volts)</span>
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);" id="latestVoltageLabel">-- V</span>
                     </div>
                     <div class="graph-wrapper">
                         <canvas id="voltageChart"></canvas>
@@ -77,11 +76,9 @@
                 </div>
 
                 <div class="graph-card">
-                    <div class="section-header">
-                        <div class="section-title" style="color: var(--neon-amber);">
-                            <span>⚡</span> Current Draw vs Time (Amperes)
-                        </div>
-                        <span style="font-size: 0.85rem; color: var(--text-muted);" id="latestCurrentLabel">-- A</span>
+                    <div class="card-title">
+                        <span style="color: var(--amber-current);">⚡ Current Draw vs Time (Amperes)</span>
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);" id="latestCurrentLabel">-- A</span>
                     </div>
                     <div class="graph-wrapper">
                         <canvas id="currentChart"></canvas>
@@ -89,36 +86,33 @@
                 </div>
             </div>
 
-            <!-- Power Chart -->
+            <!-- Power Output Chart -->
             <div class="graph-card">
-                <div class="section-header">
-                    <div class="section-title" style="color: var(--neon-green);">
-                        <span>💡</span> EV Charging Power Output (Watts)
-                    </div>
-                    <span style="font-size: 0.85rem; color: var(--text-muted);" id="latestPowerLabel">-- W</span>
+                <div class="card-title">
+                    <span style="color: var(--green-power);">💡 EV Charging Power Output (Watts)</span>
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);" id="latestPowerLabel">-- W</span>
                 </div>
                 <div class="graph-wrapper">
                     <canvas id="powerChart"></canvas>
                 </div>
             </div>
 
-            <!-- Normalized Multi-Variable Comparison -->
+            <!-- Normalized Overlay Chart -->
             <div class="graph-card">
-                <div class="section-header">
-                    <div class="section-title">
-                        <span>📊</span> Normalized Overlay Comparison (0–100% Scale)
-                    </div>
+                <div class="card-title">
+                    <span>📊 Normalized Multi-Variable Overlay (0–100% Scale)</span>
                 </div>
                 <div class="graph-wrapper">
                     <canvas id="combinedChart"></canvas>
                 </div>
             </div>
-        </main>
 
-        <footer>
-            <p><strong>EV Charging Station Real-Time Telemetry Graphing</strong></p>
-        </footer>
-    </div>
+        </div>
+    </main>
+
+    <footer class="footer container">
+        <p><strong>Smart EV Charging Telemetry Graphing</strong> | Real-Time Signal Analysis</p>
+    </footer>
 
     <script>
         const UPDATE_INTERVAL = 2000;
@@ -159,11 +153,11 @@
                 plugins: { legend: { display: false } },
                 scales: {
                     x: {
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.04)' },
                         ticks: { color: '#64748B' }
                     },
                     y: {
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.04)' },
                         ticks: { color: '#94A3B8' }
                     }
                 }
@@ -178,7 +172,7 @@
                     datasets: [{
                         data: [],
                         borderColor: '#00E5FF',
-                        backgroundColor: 'rgba(0, 229, 255, 0.08)',
+                        backgroundColor: 'rgba(0, 229, 255, 0.06)',
                         borderWidth: 2,
                         tension: 0.3,
                         fill: true,
@@ -198,7 +192,7 @@
                     datasets: [{
                         data: [],
                         borderColor: '#F59E0B',
-                        backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                        backgroundColor: 'rgba(245, 158, 11, 0.06)',
                         borderWidth: 2,
                         tension: 0.3,
                         fill: true,
@@ -218,7 +212,7 @@
                     datasets: [{
                         data: [],
                         borderColor: '#10B981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.06)',
                         borderWidth: 2,
                         tension: 0.3,
                         fill: true,
@@ -245,8 +239,8 @@
                     ...commonOptions,
                     plugins: { legend: { display: true, labels: { color: '#F8FAFC' } } },
                     scales: {
-                        y: { min: 0, max: 100, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
-                        x: { grid: { color: 'rgba(255, 255, 255, 0.05)' } }
+                        y: { min: 0, max: 100, grid: { color: 'rgba(255, 255, 255, 0.04)' } },
+                        x: { grid: { color: 'rgba(255, 255, 255, 0.04)' } }
                     }
                 }
             });
@@ -257,7 +251,6 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'ok' && data.data) {
-                        // Remember history API returns newest first, so reverse to display chronologically (left-to-right)
                         const chronological = [...data.data].reverse();
                         
                         graphData.timestamps = chronological.map(d => d.timestamp ? d.timestamp.substring(11, 19) : '');
@@ -282,27 +275,22 @@
             const iData = graphData.currents.slice(start);
             const pData = graphData.powers.slice(start);
 
-            // Update Labels
             document.getElementById('latestVoltageLabel').textContent = `${vData[vData.length - 1].toFixed(2)} V`;
             document.getElementById('latestCurrentLabel').textContent = `${iData[iData.length - 1].toFixed(2)} A`;
             document.getElementById('latestPowerLabel').textContent = `${pData[pData.length - 1].toFixed(2)} W`;
 
-            // Update Voltage
             charts.voltage.data.labels = labels;
             charts.voltage.data.datasets[0].data = vData;
             charts.voltage.update();
 
-            // Update Current
             charts.current.data.labels = labels;
             charts.current.data.datasets[0].data = iData;
             charts.current.update();
 
-            // Update Power
             charts.power.data.labels = labels;
             charts.power.data.datasets[0].data = pData;
             charts.power.update();
 
-            // Update Combined Overlay (Normalized)
             const maxV = Math.max(...vData) || 1;
             const maxI = Math.max(...iData) || 1;
             const maxP = Math.max(...pData) || 1;
@@ -317,7 +305,7 @@
         function togglePause() {
             isPaused = !isPaused;
             const btn = document.getElementById('pauseBtn');
-            btn.innerHTML = isPaused ? '<span>▶️</span> Resume Stream' : '<span>⏸️</span> Pause Graph Stream';
+            btn.innerHTML = isPaused ? '<span>▶️</span> Resume Stream' : '<span>⏸️</span> Pause Stream';
             document.getElementById('graphStatusBadge').textContent = isPaused ? 'STREAM PAUSED' : 'LIVE CHART STREAM';
         }
 
