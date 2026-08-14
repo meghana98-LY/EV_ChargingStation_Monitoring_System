@@ -148,8 +148,9 @@ class MonitoringService:
                 logger.error(f"Error in monitoring loop: {str(e)}\n{traceback.format_exc()}")
                 self._handle_monitoring_error()
             
-            # Sleep before next cycle
-            time.sleep(self.sampling_interval)
+            # Sleep before next cycle (slow for simulation, fast for real MCP3008 hardware)
+            interval = Config.get_sampling_interval()
+            time.sleep(interval)
         
         logger.info("Monitoring loop stopped")
     
@@ -337,7 +338,7 @@ class MonitoringService:
         """Get monitoring service status."""
         return {
             'running': self.running,
-            'sampling_interval': self.sampling_interval,
+            'sampling_interval': Config.get_sampling_interval(),
             'latest_state': self.get_latest_state(),
             'cache_status': self.cache_manager.get_cache_status(),
             'email_cooldown': self.email_system.get_cooldown_status(),

@@ -308,7 +308,9 @@ def create_app():
         try:
             config_data = {
                 'sensor_type': Config.SENSOR_TYPE,
-                'sampling_interval': Config.SAMPLING_INTERVAL,
+                'sampling_interval': Config.get_sampling_interval(),
+                'simulated_sampling_interval': Config.SIMULATED_SAMPLING_INTERVAL,
+                'real_sampling_interval': Config.REAL_SAMPLING_INTERVAL,
                 'anomaly_threshold': Config.ANOMALY_THRESHOLD,
                 'warning_threshold': Config.WARNING_THRESHOLD,
                 'critical_threshold': Config.CRITICAL_THRESHOLD,

@@ -63,7 +63,10 @@
                 <div class="summary-card">
                     <div class="card-title">
                         <span>Session Overview</span>
-                        <span style="font-size: 0.78rem; font-weight: 500; color: var(--text-tertiary);" id="dataSourceText">LIVE SENSOR</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span style="font-size: 0.76rem; padding: 2px 8px; background: #F1F5F9; border-radius: 12px; border: 1px solid var(--border-subtle); color: var(--text-secondary);" id="samplingRateBadge">⏱️ 5.0s Slow Rate</span>
+                            <span style="font-size: 0.78rem; font-weight: 500; color: var(--text-tertiary);" id="dataSourceText">LIVE SENSOR</span>
+                        </div>
                     </div>
                     <div class="stats-grid-compact">
                         <div class="stat-item">
@@ -238,6 +241,21 @@
                     }
                 })
                 .catch(err => console.error('Error fetching statistics:', err));
+
+            fetch('/api/config')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'ok' && data.data) {
+                        const cfg = data.data;
+                        const badge = document.getElementById('samplingRateBadge');
+                        if (cfg.sensor_type.toLowerCase() === 'simulated') {
+                            badge.textContent = `⏱️ ${cfg.sampling_interval}s Slow Sim Rate`;
+                        } else {
+                            badge.textContent = `⚡ ${cfg.sampling_interval}s Fast Real HW`;
+                        }
+                    }
+                })
+                .catch(err => console.error('Error fetching config:', err));
 
             fetchHistoryLog();
         }

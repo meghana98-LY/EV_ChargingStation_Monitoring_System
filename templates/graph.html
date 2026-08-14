@@ -143,7 +143,7 @@
         });
 
         function initCharts() {
-            Chart.defaults.color = '#94A3B8';
+            Chart.defaults.color = '#475569';
             Chart.defaults.font.family = 'Inter';
 
             const commonOptions = {
@@ -153,12 +153,12 @@
                 plugins: { legend: { display: false } },
                 scales: {
                     x: {
-                        grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
                         ticks: { color: '#64748B' }
                     },
                     y: {
-                        grid: { color: 'rgba(255, 255, 255, 0.04)' },
-                        ticks: { color: '#94A3B8' }
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        ticks: { color: '#475569' }
                     }
                 }
             };
@@ -171,13 +171,13 @@
                     labels: [],
                     datasets: [{
                         data: [],
-                        borderColor: '#00E5FF',
-                        backgroundColor: 'rgba(0, 229, 255, 0.06)',
+                        borderColor: '#0284C7',
+                        backgroundColor: 'rgba(2, 132, 199, 0.08)',
                         borderWidth: 2,
                         tension: 0.3,
                         fill: true,
                         pointRadius: 3,
-                        pointBackgroundColor: '#00E5FF'
+                        pointBackgroundColor: '#0284C7'
                     }]
                 },
                 options: commonOptions
@@ -191,13 +191,13 @@
                     labels: [],
                     datasets: [{
                         data: [],
-                        borderColor: '#F59E0B',
-                        backgroundColor: 'rgba(245, 158, 11, 0.06)',
+                        borderColor: '#D97706',
+                        backgroundColor: 'rgba(217, 119, 6, 0.08)',
                         borderWidth: 2,
                         tension: 0.3,
                         fill: true,
                         pointRadius: 3,
-                        pointBackgroundColor: '#F59E0B'
+                        pointBackgroundColor: '#D97706'
                     }]
                 },
                 options: commonOptions
@@ -211,13 +211,13 @@
                     labels: [],
                     datasets: [{
                         data: [],
-                        borderColor: '#10B981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.06)',
+                        borderColor: '#059669',
+                        backgroundColor: 'rgba(5, 150, 105, 0.08)',
                         borderWidth: 2,
                         tension: 0.3,
                         fill: true,
                         pointRadius: 3,
-                        pointBackgroundColor: '#10B981'
+                        pointBackgroundColor: '#059669'
                     }]
                 },
                 options: commonOptions
@@ -230,17 +230,17 @@
                 data: {
                     labels: [],
                     datasets: [
-                        { label: 'Voltage (%)', data: [], borderColor: '#00E5FF', borderWidth: 2, tension: 0.3 },
-                        { label: 'Current (%)', data: [], borderColor: '#F59E0B', borderWidth: 2, tension: 0.3 },
-                        { label: 'Power (%)', data: [], borderColor: '#10B981', borderWidth: 2, tension: 0.3 }
+                        { label: 'Voltage (%)', data: [], borderColor: '#0284C7', borderWidth: 2, tension: 0.3 },
+                        { label: 'Current (%)', data: [], borderColor: '#D97706', borderWidth: 2, tension: 0.3 },
+                        { label: 'Power (%)', data: [], borderColor: '#059669', borderWidth: 2, tension: 0.3 }
                     ]
                 },
                 options: {
                     ...commonOptions,
-                    plugins: { legend: { display: true, labels: { color: '#F8FAFC' } } },
+                    plugins: { legend: { display: true, labels: { color: '#0F172A' } } },
                     scales: {
-                        y: { min: 0, max: 100, grid: { color: 'rgba(255, 255, 255, 0.04)' } },
-                        x: { grid: { color: 'rgba(255, 255, 255, 0.04)' } }
+                        y: { min: 0, max: 100, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+                        x: { grid: { color: 'rgba(0, 0, 0, 0.05)' } }
                     }
                 }
             });

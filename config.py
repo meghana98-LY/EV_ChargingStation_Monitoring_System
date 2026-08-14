@@ -14,7 +14,22 @@ class Config:
     
     # Sensor Configuration
     SENSOR_TYPE = os.getenv('SENSOR_TYPE', 'simulated')  # 'simulated' or 'mcp3008'
-    SAMPLING_INTERVAL = float(os.getenv('SAMPLING_INTERVAL', '2.0'))  # seconds
+    SIMULATED_SAMPLING_INTERVAL = float(os.getenv('SIMULATED_SAMPLING_INTERVAL', '5.0'))  # Slow rate for simulation (seconds)
+    REAL_SAMPLING_INTERVAL = float(os.getenv('REAL_SAMPLING_INTERVAL', '0.5'))            # Fast rate for real MCP3008 hardware (seconds)
+    
+    @classmethod
+    def get_sampling_interval(cls) -> float:
+        """Get appropriate sampling interval based on sensor type."""
+        explicit = os.getenv('SAMPLING_INTERVAL')
+        if explicit:
+            return float(explicit)
+        if cls.SENSOR_TYPE.lower() in ['simulated', 'simulation']:
+            return cls.SIMULATED_SAMPLING_INTERVAL
+        return cls.REAL_SAMPLING_INTERVAL
+    
+    @property
+    def SAMPLING_INTERVAL(self) -> float:
+        return self.get_sampling_interval()
     
     # ADC and Sensor Calibration
     ADC_REFERENCE_VOLTAGE = float(os.getenv('ADC_REFERENCE_VOLTAGE', '3.3'))  # volts

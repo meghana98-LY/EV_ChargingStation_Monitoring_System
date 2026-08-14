@@ -78,6 +78,72 @@ class EmailAlertSystem:
         elif severity == 'CRITICAL':
             self.last_critical_time = time.time()
     
+    def _format_readable_timestamp(self, timestamp_str: str) -> str:
+        """Format ISO or raw timestamp into clean human-readable date & time."""
+        if not timestamp_str:
+            return datetime.now().strftime('%A, %B %d, %Y at %I:%M:%S %p')
+        try:
+            # Handle ISO strings like 2026-08-14T17:04:02.199029
+            dt = datetime.fromisoformat(timestamp_str.replace('Z', ''))
+            return dt.strftime('%A, %B %d, %Y at %I:%M:%S %p')
+        except ValueError:
+            try:
+                # Handle CSV strings like 2026-08-14 17:04:02
+                dt = datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S')
+                return dt.strftime('%A, %B %d, %Y at %I:%M:%S %p')
+            except ValueError:
+                return timestamp_str
+
+    def _format_reason_points(self, reason: str, severity: str, voltage: float,
+                              current: float, power: float, anomaly_score: float) -> str:
+        """Format alert reason into clear, structured HTML bullet points."""
+        points = []
+        
+        # Split semi-colon or period separated factors into distinct points
+        if ';' in reason:
+            raw_parts = [p.strip() for p in reason.split(';') if p.strip()]
+            for part in raw_parts:
+                points.append(part)
+        elif '. ' in reason:
+            raw_parts = [p.strip() for p in reason.split('. ') if p.strip()]
+            for part in raw_parts:
+                points.append(part)
+        else:
+            points.append(reason)
+        
+        html_items = []
+        
+        # Point 1: Severity classification
+        html_items.append(
+            f'<li style="margin-bottom: 12px; line-height: 1.5;">'
+            f'<strong style="color: #38bdf8;">1. Classification:</strong> System detected a <strong>{severity}</strong> charging condition.'
+            f'</li>'
+        )
+        
+        # Point 2: Specific Analysis Factors
+        for i, pt in enumerate(points, 2):
+            clean_pt = pt.rstrip('.')
+            if clean_pt.startswith('Warning:') or clean_pt.startswith('Critical:'):
+                clean_pt = clean_pt.split(':', 1)[-1].strip()
+            html_items.append(
+                f'<li style="margin-bottom: 12px; line-height: 1.5;">'
+                f'<strong style="color: #f59e0b;">{i}. Analysis Factor:</strong> {clean_pt}.'
+                f'</li>'
+            )
+        
+        # Final Point: Telemetry Snapshot & ML Evaluation
+        next_idx = len(points) + 2
+        score_eval = "Normal statistical distribution" if anomaly_score < -0.5 else "Elevated statistical deviation from baseline"
+        html_items.append(
+            f'<li style="margin-bottom: 8px; line-height: 1.5;">'
+            f'<strong style="color: #10b981;">{next_idx}. Telemetry Snapshot & ML Assessment:</strong> '
+            f'Measured Voltage <strong>{voltage:.2f}V</strong>, Current <strong>{current:.2f}A</strong>, Power <strong>{power:.2f}W</strong>. '
+            f'Isolation Forest Score: <code>{anomaly_score:.4f}</code> ({score_eval}).'
+            f'</li>'
+        )
+        
+        return f'<ul style="margin: 0; padding-left: 20px; color: #e2e8f0; font-size: 14px;">{"".join(html_items)}</ul>'
+
     def _build_email(self, severity: str, timestamp: str, voltage: float,
                      current: float, power: float, anomaly_score: float,
                      reason: str) -> MIMEMultipart:
@@ -102,7 +168,7 @@ class EmailAlertSystem:
             subject = '🧪 EV Charging System - Diagnostic Test Email'
             emoji = '🧪'
         elif severity == 'WARNING':
-            subject = '⚠️ EV Charging Early Warning'
+            subject = '⚠️ EV Charging Early Warning Alert'
             emoji = '⚠️'
         else:  # CRITICAL
             subject = '🚨 EV Charging Critical Alert'
@@ -113,7 +179,9 @@ class EmailAlertSystem:
         msg['To'] = self.to_email
         
         header_color = '#3b82f6' if severity == 'TEST' else ('#ef4444' if severity == 'CRITICAL' else '#f59e0b')
-        
+        readable_timestamp = self._format_readable_timestamp(timestamp)
+        formatted_reason_points = self._format_reason_points(reason, severity, voltage, current, power, anomaly_score)
+
         # HTML content
         html = f"""\
         <html>
@@ -123,39 +191,41 @@ class EmailAlertSystem:
                         <h2 style="color: {header_color}; margin: 0; font-size: 24px; display: flex; align-items: center; gap: 10px;">
                             {emoji} {severity} NOTIFICATION
                         </h2>
-                        <p style="color: #94a3b8; font-size: 13px; margin-top: 5px;">EV Charging Station Monitoring & Anomaly Detection System</p>
+                        <p style="color: #94a3b8; font-size: 13px; margin-top: 5px;">IoT-Based Smart EV Charging Station Monitoring & Early Warning System</p>
                     </div>
                     
-                    <p style="color: #e2e8f0;"><strong>Timestamp:</strong> {timestamp}</p>
-                    <p style="color: #e2e8f0;"><strong>Severity Level:</strong> <span style="color: {header_color}; font-weight: bold; padding: 3px 8px; background: rgba(255,255,255,0.05); border-radius: 4px;">{severity}</span></p>
+                    <div style="background-color: #0f172a; padding: 14px 18px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 20px;">
+                        <p style="color: #e2e8f0; margin: 0 0 6px 0; font-size: 14px;"><strong>🕒 Event Timestamp:</strong> <span style="color: #38bdf8; font-weight: 600;">{readable_timestamp}</span></p>
+                        <p style="color: #e2e8f0; margin: 0; font-size: 14px;"><strong>⚡ Severity Level:</strong> <span style="color: {header_color}; font-weight: bold; padding: 2px 8px; background: rgba(255,255,255,0.08); border-radius: 4px;">{severity}</span></p>
+                    </div>
+
+                    <h3 style="color: #38bdf8; margin-top: 20px; border-bottom: 1px solid #334155; padding-bottom: 8px;">Analysis & Detection Details (Point-by-Point):</h3>
+                    <div style="background-color: #0f172a; padding: 18px; border-left: 4px solid {header_color}; border-radius: 6px; margin-bottom: 20px;">
+                        {formatted_reason_points}
+                    </div>
                     
-                    <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid #334155; padding-bottom: 8px;">Telemetry Readings:</h3>
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; color: #f8fafc;">
+                    <h3 style="color: #38bdf8; margin-top: 20px; border-bottom: 1px solid #334155; padding-bottom: 8px;">Telemetry Readings Table:</h3>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; color: #f8fafc; font-size: 14px;">
                         <tr style="background-color: #0f172a;">
-                            <td style="padding: 12px; border: 1px solid #334155; color: #94a3b8;"><strong>Voltage (V)</strong></td>
-                            <td style="padding: 12px; border: 1px solid #334155; color: #38bdf8; font-weight: bold;">{voltage:.2f} V</td>
+                            <td style="padding: 10px 14px; border: 1px solid #334155; color: #94a3b8;"><strong>Voltage (V)</strong></td>
+                            <td style="padding: 10px 14px; border: 1px solid #334155; color: #38bdf8; font-weight: bold;">{voltage:.2f} V</td>
                         </tr>
                         <tr>
-                            <td style="padding: 12px; border: 1px solid #334155; color: #94a3b8;"><strong>Current (A)</strong></td>
-                            <td style="padding: 12px; border: 1px solid #334155; color: #f59e0b; font-weight: bold;">{current:.2f} A</td>
+                            <td style="padding: 10px 14px; border: 1px solid #334155; color: #94a3b8;"><strong>Current (A)</strong></td>
+                            <td style="padding: 10px 14px; border: 1px solid #334155; color: #f59e0b; font-weight: bold;">{current:.2f} A</td>
                         </tr>
                         <tr style="background-color: #0f172a;">
-                            <td style="padding: 12px; border: 1px solid #334155; color: #94a3b8;"><strong>Power (W)</strong></td>
-                            <td style="padding: 12px; border: 1px solid #334155; color: #10b981; font-weight: bold;">{power:.2f} W</td>
+                            <td style="padding: 10px 14px; border: 1px solid #334155; color: #94a3b8;"><strong>Power (W)</strong></td>
+                            <td style="padding: 10px 14px; border: 1px solid #334155; color: #10b981; font-weight: bold;">{power:.2f} W</td>
                         </tr>
                         <tr>
-                            <td style="padding: 12px; border: 1px solid #334155; color: #94a3b8;"><strong>ML Anomaly Score</strong></td>
-                            <td style="padding: 12px; border: 1px solid #334155; color: #cbd5e1;">{anomaly_score:.4f}</td>
+                            <td style="padding: 10px 14px; border: 1px solid #334155; color: #94a3b8;"><strong>ML Anomaly Score</strong></td>
+                            <td style="padding: 10px 14px; border: 1px solid #334155; color: #cbd5e1;">{anomaly_score:.4f}</td>
                         </tr>
                     </table>
                     
-                    <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid #334155; padding-bottom: 8px;">Analysis & Reason:</h3>
-                    <div style="background-color: #0f172a; padding: 15px; border-left: 4px solid {header_color}; border-radius: 4px; color: #e2e8f0;">
-                        {reason}
-                    </div>
-                    
                     <h3 style="color: #38bdf8; margin-top: 25px; border-bottom: 1px solid #334155; padding-bottom: 8px;">Recommended Operational Protocol:</h3>
-                    <ul style="color: #cbd5e1; padding-left: 20px; line-height: 1.8;">
+                    <ul style="color: #cbd5e1; padding-left: 20px; line-height: 1.8; font-size: 13px;">
                         <li>Verify physical cable connection and connector thermal status.</li>
                         <li>Check telemetry sensors and MCP3008 ADC SPI communication.</li>
                         <li>Monitor voltage & current trends on real-time web dashboard.</li>
