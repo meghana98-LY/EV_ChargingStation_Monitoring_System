@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Charging Station Monitor</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ EV Charging Station Monitor</h1>
+            <p>Real-time Anomaly Detection and Early Warning System</p>
+        </header>
+
+        <nav class="nav-tabs">
+            <a href="/" class="nav-tab active">Dashboard</a>
+            <a href="/graph" class="nav-tab">Graph</a>
+        </nav>
+
+        <main class="main-content">
+            <!-- Status Section -->
+            <section class="section status-section">
+                <h2>System Status</h2>
+                <div class="status-grid">
+                    <div class="status-card">
+                        <div class="status-label">Data Source</div>
+                        <div id="dataSource" class="status-value" style="color: #666;">Loading...</div>
+                    </div>
+                    <div class="status-card">
+                        <div class="status-label">System State</div>
+                        <div id="systemState" class="status-value" style="color: #666;">Loading...</div>
+                    </div>
+                    <div class="status-card">
+                        <div class="status-label">ML Status</div>
+                        <div id="mlStatus" class="status-value" style="color: #666;">Loading...</div>
+                    </div>
+                    <div class="status-card">
+                        <div class="status-label">Last Update</div>
+                        <div id="lastUpdate" class="status-value" style="color: #666;">Loading...</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Severity Alert Section -->
+            <section class="section severity-section">
+                <div id="severityAlert" class="severity-alert alert-normal">
+                    <span class="severity-icon">🟢</span>
+                    <div class="severity-content">
+                        <div class="severity-title">NORMAL</div>
+                        <div class="severity-reason">All parameters within normal range</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Live Measurements Section -->
+            <section class="section measurements-section">
+                <h2>Live Measurements</h2>
+                <div class="measurements-grid">
+                    <div class="measurement-card">
+                        <div class="measurement-icon">🔌</div>
+                        <div class="measurement-label">Voltage</div>
+                        <div id="voltageValue" class="measurement-value">--</div>
+                        <div class="measurement-unit">V</div>
+                    </div>
+                    <div class="measurement-card">
+                        <div class="measurement-icon">⚡</div>
+                        <div class="measurement-label">Current</div>
+                        <div id="currentValue" class="measurement-value">--</div>
+                        <div class="measurement-unit">A</div>
+                    </div>
+                    <div class="measurement-card">
+                        <div class="measurement-icon">💡</div>
+                        <div class="measurement-label">Power</div>
+                        <div id="powerValue" class="measurement-value">--</div>
+                        <div class="measurement-unit">W</div>
+                    </div>
+                    <div class="measurement-card">
+                        <div class="measurement-icon">📊</div>
+                        <div class="measurement-label">Anomaly Score</div>
+                        <div id="anomalyValue" class="measurement-value">--</div>
+                        <div class="measurement-unit"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ML Information Section -->
+            <section class="section ml-section">
+                <h2>Anomaly Detection Status</h2>
+                <div id="mlInfo" class="info-box">
+                    <p>Loading ML status...</p>
+                </div>
+            </section>
+
+            <!-- Statistics Section -->
+            <section class="section stats-section">
+                <h2>Statistics</h2>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Avg Voltage</div>
+                        <div id="statAvgVoltage" class="stat-value">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Avg Current</div>
+                        <div id="statAvgCurrent" class="stat-value">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Max Power</div>
+                        <div id="statMaxPower" class="stat-value">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Readings</div>
+                        <div id="statTotalReadings" class="stat-value">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Warnings</div>
+                        <div id="statWarnings" class="stat-value warning-text">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Critical</div>
+                        <div id="statCritical" class="stat-value critical-text">--</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Alert History Section -->
+            <section class="section history-section">
+                <h2>Recent Alert History</h2>
+                <div class="history-controls">
+                    <button id="refreshBtn" class="btn btn-primary">Refresh</button>
+                    <button id="clearBtn" class="btn btn-secondary">Clear Log</button>
+                </div>
+                <div id="alertHistory" class="alert-history">
+                    <p>Loading alert history...</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>EV Charging Station Monitoring System | Powered by Isolation Forest + Trend Analysis</p>
+            <p>⚠️ This system detects abnormal charging behavior for early warning, not battery failure prediction.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Configuration
+        const UPDATE_INTERVAL = 2000; // Update every 2 seconds
+        const HISTORY_LIMIT = 20; // Show last 20 alert entries
+
+        let updateTimer = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDashboard();
+            updateTimer = setInterval(updateDashboard, UPDATE_INTERVAL);
+            
+            document.getElementById('refreshBtn').addEventListener('click', updateDashboard);
+            document.getElementById('clearBtn').addEventListener('click', clearLog);
+        });
+
+        // Update dashboard
+        function updateDashboard() {
+            // Fetch latest data
+            fetch('/api/latest')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        updateLatestState(data.data);
+                    }
+                })
+                .catch(err => console.error('Error fetching latest:', err));
+
+            // Fetch statistics
+            fetch('/api/statistics')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        updateStatistics(data.data);
+                    }
+                })
+                .catch(err => console.error('Error fetching statistics:', err));
+
+            // Fetch history
+            fetch(`/api/history?limit=${HISTORY_LIMIT}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'ok') {
+                        updateAlertHistory(data.data);
+                    }
+                })
+                .catch(err => console.error('Error fetching history:', err));
+        }
+
+        // Update latest state
+        function updateLatestState(state) {
+            // Update measurements
+            document.getElementById('voltageValue').textContent = state.voltage.toFixed(2);
+            document.getElementById('currentValue').textContent = state.current.toFixed(2);
+            document.getElementById('powerValue').textContent = state.power.toFixed(2);
+            document.getElementById('anomalyValue').textContent = state.anomaly_score.toFixed(4);
+
+            // Update data source indicator
+            const sourceElement = document.getElementById('dataSource');
+            if (state.is_live) {
+                sourceElement.innerHTML = '<span style="color: #4caf50;">🟢 LIVE SENSOR DATA</span>';
+            } else if (state.data_source === 'stale_cache') {
+                sourceElement.innerHTML = '<span style="color: #ff9800;">🟡 STALE / CACHED DATA</span>';
+            } else {
+                sourceElement.innerHTML = '<span style="color: #f44336;">🔴 SENSOR DATA UNAVAILABLE</span>';
+            }
+
+            // Update system state
+            document.getElementById('systemState').textContent = state.severity;
+            document.getElementById('systemState').style.color = getSeverityColor(state.severity);
+
+            // Update ML status
+            const mlStatus = state.ml_status === 'ok' ? '✓ OK' : '✗ Error';
+            document.getElementById('mlStatus').textContent = mlStatus;
+            document.getElementById('mlStatus').style.color = state.ml_status === 'ok' ? '#4caf50' : '#f44336';
+
+            // Update last update time
+            const timestamp = new Date(state.timestamp);
+            document.getElementById('lastUpdate').textContent = timestamp.toLocaleTimeString();
+
+            // Update severity alert
+            updateSeverityAlert(state.severity, state.reason);
+
+            // Update ML info
+            updateMLInfo(state);
+        }
+
+        // Update severity alert display
+        function updateSeverityAlert(severity, reason) {
+            const alertDiv = document.getElementById('severityAlert');
+            alertDiv.className = 'severity-alert alert-' + severity.toLowerCase();
+            
+            let icon = '🟢';
+            if (severity === 'WARNING') {
+                icon = '🟡';
+            } else if (severity === 'CRITICAL') {
+                icon = '🔴';
+            }
+            
+            alertDiv.innerHTML = `
+                <span class="severity-icon">${icon}</span>
+                <div class="severity-content">
+                    <div class="severity-title">${severity}</div>
+                    <div class="severity-reason">${reason}</div>
+                </div>
+            `;
+        }
+
+        // Update ML info
+        function updateMLInfo(state) {
+            const mlDiv = document.getElementById('mlInfo');
+            mlDiv.innerHTML = `
+                <p><strong>Prediction:</strong> ${state.prediction}</p>
+                <p><strong>Anomaly Score:</strong> ${state.anomaly_score.toFixed(4)}</p>
+                <p><strong>Data Source:</strong> ${state.data_source}</p>
+                <p><strong>Last Reading:</strong> ${new Date(state.timestamp).toLocaleString()}</p>
+            `;
+        }
+
+        // Update statistics
+        function updateStatistics(stats) {
+            if (stats.total_readings === 0) return;
+            
+            document.getElementById('statAvgVoltage').textContent = stats.voltage.avg.toFixed(2) + ' V';
+            document.getElementById('statAvgCurrent').textContent = stats.current.avg.toFixed(2) + ' A';
+            document.getElementById('statMaxPower').textContent = stats.power.max.toFixed(2) + ' W';
+            document.getElementById('statTotalReadings').textContent = stats.total_readings;
+            document.getElementById('statWarnings').textContent = stats.alerts.warnings;
+            document.getElementById('statCritical').textContent = stats.alerts.criticals;
+        }
+
+        // Update alert history
+        function updateAlertHistory(history) {
+            const historyDiv = document.getElementById('alertHistory');
+            
+            if (!history || history.length === 0) {
+                historyDiv.innerHTML = '<p class="no-data">No history data available</p>';
+                return;
+            }
+            
+            let html = '<table class="history-table"><thead><tr>' +
+                '<th>Time</th><th>Severity</th><th>Voltage</th><th>Current</th>' +
+                '<th>Power</th><th>Anomaly</th><th>Email</th></tr></thead><tbody>';
+            
+            // Show only anomaly/warning/critical entries
+            const filteredHistory = history.filter(h => h.severity && h.severity !== 'NORMAL');
+            
+            if (filteredHistory.length === 0) {
+                html += '<tr><td colspan="7" class="no-data">No alerts in history</td></tr>';
+            } else {
+                filteredHistory.slice(0, HISTORY_LIMIT).forEach(entry => {
+                    const severityClass = 'severity-' + (entry.severity || 'unknown').toLowerCase();
+                    html += `<tr class="${severityClass}">
+                        <td>${entry.timestamp || '-'}</td>
+                        <td>${entry.severity || '-'}</td>
+                        <td>${parseFloat(entry.voltage || 0).toFixed(2)}V</td>
+                        <td>${parseFloat(entry.current || 0).toFixed(2)}A</td>
+                        <td>${parseFloat(entry.power || 0).toFixed(2)}W</td>
+                        <td>${parseFloat(entry.anomaly_score || 0).toFixed(4)}</td>
+                        <td>${entry.email_alert_sent === 'Yes' ? '✓' : '-'}</td>
+                    </tr>`;
+                });
+            }
+            
+            html += '</tbody></table>';
+            historyDiv.innerHTML = html;
+        }
+
+        // Get severity color
+        function getSeverityColor(severity) {
+            switch(severity) {
+                case 'CRITICAL':
+                    return '#f44336';
+                case 'WARNING':
+                    return '#ff9800';
+                default:
+                    return '#4caf50';
+            }
+        }
+
+        // Clear log (placeholder - would need backend support)
+        function clearLog() {
+            if (confirm('Clear log file? This action cannot be undone.')) {
+                alert('Log clearing requires backend support - contact administrator');
+            }
+        }
+
+        // Cleanup
+        window.addEventListener('beforeunload', function() {
+            if (updateTimer) clearInterval(updateTimer);
+        });
+    </script>
+</body>
+</html>
