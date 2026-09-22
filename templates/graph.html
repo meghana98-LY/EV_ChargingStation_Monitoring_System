@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV ChargeGuard | Real-Time Telemetry Graphs</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+    <!-- Sleek Unified Top Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-inner">
+                <a href="/" class="nav-brand">
+                    <div class="nav-logo-icon">📈</div>
+                    <div>
+                        <span class="nav-brand-title">EV ChargeGuard</span>
+                        <span class="nav-brand-sub">Real-Time Telemetry Graphing Station</span>
+                    </div>
+                </a>
+
+                <div class="nav-menu">
+                    <a href="/" class="nav-link">
+                        <span>📊</span> Overview
+                    </a>
+                    <a href="/graph" class="nav-link active">
+                        <span>📈</span> Telemetry Graphs
+                    </a>
+                </div>
+
+                <div class="nav-status-pill">
+                    <div class="pulse-dot"></div>
+                    <span id="graphStatusBadge">LIVE CHART STREAM</span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div class="dashboard-grid">
+
+            <!-- Control Bar -->
+            <div class="control-drawer-card">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <label for="timeRangeSelect" style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Time Horizon:</label>
+                    <select id="timeRangeSelect" class="btn-pill" style="background: var(--bg-card-inner); outline: none;">
+                        <option value="10">Last 10 Readings</option>
+                        <option value="20" selected>Last 20 Readings</option>
+                        <option value="50">Last 50 Readings</option>
+                        <option value="100">Last 100 Readings</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button id="pauseBtn" class="btn-pill btn-pill-cyan" onclick="togglePause()">
+                        <span>⏸️</span> Pause Stream
+                    </button>
+                    <button class="btn-pill" onclick="downloadCSV()">
+                        <span>💾</span> Export CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- Voltage & Current Row -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 24px;">
+                <div class="graph-card">
+                    <div class="card-title">
+                        <span style="color: var(--cyan-voltage);">🔌 Voltage vs Time (Volts)</span>
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);" id="latestVoltageLabel">-- V</span>
+                    </div>
+                    <div class="graph-wrapper">
+                        <canvas id="voltageChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="graph-card">
+                    <div class="card-title">
+                        <span style="color: var(--amber-current);">⚡ Current Draw vs Time (Amperes)</span>
+                        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);" id="latestCurrentLabel">-- A</span>
+                    </div>
+                    <div class="graph-wrapper">
+                        <canvas id="currentChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Power Output Chart -->
+            <div class="graph-card">
+                <div class="card-title">
+                    <span style="color: var(--green-power);">💡 EV Charging Power Output (Watts)</span>
+                    <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);" id="latestPowerLabel">-- W</span>
+                </div>
+                <div class="graph-wrapper">
+                    <canvas id="powerChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Normalized Overlay Chart -->
+            <div class="graph-card">
+                <div class="card-title">
+                    <span>📊 Normalized Multi-Variable Overlay (0–100% Scale)</span>
+                </div>
+                <div class="graph-wrapper">
+                    <canvas id="combinedChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="footer container">
+        <p><strong>Smart EV Charging Telemetry Graphing</strong> | Real-Time Signal Analysis</p>
+    </footer>
+
+    <script>
+        const UPDATE_INTERVAL = 2000;
+        let isPaused = false;
+        let timeRange = 20;
+        let timer = null;
+
+        let graphData = {
+            timestamps: [],
+            voltages: [],
+            currents: [],
+            powers: []
+        };
+
+        let charts = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            fetchGraphData();
+            timer = setInterval(() => {
+                if (!isPaused) fetchGraphData();
+            }, UPDATE_INTERVAL);
+
+            document.getElementById('timeRangeSelect').addEventListener('change', (e) => {
+                timeRange = parseInt(e.target.value);
+                updateCharts();
+            });
+        });
+
+        function initCharts() {
+            Chart.defaults.color = '#475569';
+            Chart.defaults.font.family = 'Inter';
+
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 300 },
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        ticks: { color: '#64748B' }
+                    },
+                    y: {
+                        grid: { color: 'rgba(0, 0, 0, 0.05)' },
+                        ticks: { color: '#475569' }
+                    }
+                }
+            };
+
+            // Voltage Chart
+            const vCtx = document.getElementById('voltageChart').getContext('2d');
+            charts.voltage = new Chart(vCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        borderColor: '#0284C7',
+                        backgroundColor: 'rgba(2, 132, 199, 0.08)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#0284C7'
+                    }]
+                },
+                options: commonOptions
+            });
+
+            // Current Chart
+            const iCtx = document.getElementById('currentChart').getContext('2d');
+            charts.current = new Chart(iCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        borderColor: '#D97706',
+                        backgroundColor: 'rgba(217, 119, 6, 0.08)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#D97706'
+                    }]
+                },
+                options: commonOptions
+            });
+
+            // Power Chart
+            const pCtx = document.getElementById('powerChart').getContext('2d');
+            charts.power = new Chart(pCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        borderColor: '#059669',
+                        backgroundColor: 'rgba(5, 150, 105, 0.08)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#059669'
+                    }]
+                },
+                options: commonOptions
+            });
+
+            // Combined Overlay Chart
+            const cCtx = document.getElementById('combinedChart').getContext('2d');
+            charts.combined = new Chart(cCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Voltage (%)', data: [], borderColor: '#0284C7', borderWidth: 2, tension: 0.3 },
+                        { label: 'Current (%)', data: [], borderColor: '#D97706', borderWidth: 2, tension: 0.3 },
+                        { label: 'Power (%)', data: [], borderColor: '#059669', borderWidth: 2, tension: 0.3 }
+                    ]
+                },
+                options: {
+                    ...commonOptions,
+                    plugins: { legend: { display: true, labels: { color: '#0F172A' } } },
+                    scales: {
+                        y: { min: 0, max: 100, grid: { color: 'rgba(0, 0, 0, 0.05)' } },
+                        x: { grid: { color: 'rgba(0, 0, 0, 0.05)' } }
+                    }
+                }
+            });
+        }
+
+        function fetchGraphData() {
+            fetch('/api/history?limit=100')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'ok' && data.data) {
+                        const chronological = [...data.data].reverse();
+                        
+                        graphData.timestamps = chronological.map(d => d.timestamp ? d.timestamp.substring(11, 19) : '');
+                        graphData.voltages = chronological.map(d => parseFloat(d.voltage) || 0);
+                        graphData.currents = chronological.map(d => parseFloat(d.current) || 0);
+                        graphData.powers = chronological.map(d => parseFloat(d.power) || 0);
+
+                        updateCharts();
+                    }
+                })
+                .catch(err => console.error('Error fetching graph history:', err));
+        }
+
+        function updateCharts() {
+            if (graphData.timestamps.length === 0) return;
+
+            const len = graphData.timestamps.length;
+            const start = Math.max(0, len - timeRange);
+
+            const labels = graphData.timestamps.slice(start);
+            const vData = graphData.voltages.slice(start);
+            const iData = graphData.currents.slice(start);
+            const pData = graphData.powers.slice(start);
+
+            document.getElementById('latestVoltageLabel').textContent = `${vData[vData.length - 1].toFixed(2)} V`;
+            document.getElementById('latestCurrentLabel').textContent = `${iData[iData.length - 1].toFixed(2)} A`;
+            document.getElementById('latestPowerLabel').textContent = `${pData[pData.length - 1].toFixed(2)} W`;
+
+            charts.voltage.data.labels = labels;
+            charts.voltage.data.datasets[0].data = vData;
+            charts.voltage.update();
+
+            charts.current.data.labels = labels;
+            charts.current.data.datasets[0].data = iData;
+            charts.current.update();
+
+            charts.power.data.labels = labels;
+            charts.power.data.datasets[0].data = pData;
+            charts.power.update();
+
+            const maxV = Math.max(...vData) || 1;
+            const maxI = Math.max(...iData) || 1;
+            const maxP = Math.max(...pData) || 1;
+
+            charts.combined.data.labels = labels;
+            charts.combined.data.datasets[0].data = vData.map(v => (v / maxV) * 100);
+            charts.combined.data.datasets[1].data = iData.map(i => (i / maxI) * 100);
+            charts.combined.data.datasets[2].data = pData.map(p => (p / maxP) * 100);
+            charts.combined.update();
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.getElementById('pauseBtn');
+            btn.innerHTML = isPaused ? '<span>▶️</span> Resume Stream' : '<span>⏸️</span> Pause Stream';
+            document.getElementById('graphStatusBadge').textContent = isPaused ? 'STREAM PAUSED' : 'LIVE CHART STREAM';
+        }
+
+        function downloadCSV() {
+            if (graphData.timestamps.length === 0) {
+                alert('No telemetry data to export');
+                return;
+            }
+
+            let csv = 'Timestamp,Voltage(V),Current(A),Power(W)\n';
+            for (let i = 0; i < graphData.timestamps.length; i++) {
+                csv += `${graphData.timestamps[i]},${graphData.voltages[i]},${graphData.currents[i]},${graphData.powers[i]}\n`;
+            }
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ev_telemetry_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        Smart EV Charging Station
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+    <main class="container">
+
+        <!-- ================================================= -->
+        <!-- HEADER -->
+        <!-- ================================================= -->
+
+        <header class="header">
+
+            <div>
+
+                <h1>
+                    Smart EV Charging Station
+                </h1>
+
+                <p>
+                    Real-Time Monitoring and Intelligent Anomaly Detection
+                </p>
+
+            </div>
+
+
+            <a
+                href="/analytics"
+                class="analytics-button"
+            >
+                Analytics & Graphs →
+            </a>
+
+        </header>
+
+
+        <!-- ================================================= -->
+        <!-- LIVE INDICATOR -->
+        <!-- ================================================= -->
+
+        <div class="live-indicator">
+
+            <span class="live-dot"></span>
+
+            <strong>
+                MONITORING RUNNING
+            </strong>
+
+        </div>
+
+
+        <!-- ================================================= -->
+        <!-- ELECTRICAL PARAMETERS -->
+        <!-- ================================================= -->
+
+        <section>
+
+            <div class="section-title">
+
+                <h2>
+                    Electrical Parameters
+                </h2>
+
+                <span class="live-badge">
+                    LIVE
+                </span>
+
+            </div>
+
+
+            <div class="status-grid">
+
+                <!-- Voltage -->
+
+                <div class="card">
+
+                    <div class="card-icon">
+                        ⚡
+                    </div>
+
+                    <h3>
+                        Voltage
+                    </h3>
+
+                    <p id="voltage">
+                        -- V
+                    </p>
+
+                    <span class="card-description">
+                        AC Voltage
+                    </span>
+
+                </div>
+
+
+                <!-- Current -->
+
+                <div class="card">
+
+                    <div class="card-icon">
+                        ⇅
+                    </div>
+
+                    <h3>
+                        Current
+                    </h3>
+
+                    <p id="current">
+                        -- A
+                    </p>
+
+                    <span class="card-description">
+                        Charging Current
+                    </span>
+
+                </div>
+
+
+                <!-- Power -->
+
+                <div class="card">
+
+                    <div class="card-icon">
+                        ⚙
+                    </div>
+
+                    <h3>
+                        Power
+                    </h3>
+
+                    <p id="power">
+                        -- W
+                    </p>
+
+                    <span class="card-description">
+                        V × I
+                    </span>
+
+                </div>
+
+
+                <!-- Distance -->
+
+                <div class="card">
+
+                    <div class="card-icon">
+                        ◉
+                    </div>
+
+                    <h3>
+                        Distance
+                    </h3>
+
+                    <p id="distance">
+                        -- cm
+                    </p>
+
+                    <span class="card-description">
+                        HC-SR04
+                    </span>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- SYSTEM STATUS -->
+        <!-- ================================================= -->
+
+        <section>
+
+            <div class="section-title">
+
+                <h2>
+                    System Status
+                </h2>
+
+            </div>
+
+
+            <div class="status-grid">
+
+                <!-- Vehicle -->
+
+                <div
+                    class="status-card"
+                    id="vehicle-card"
+                >
+
+                    <h3>
+                        Vehicle Detection
+                    </h3>
+
+                    <p id="vehicle-status">
+                        --
+                    </p>
+
+                    <span
+                        id="vehicle-badge"
+                        class="status-badge"
+                    >
+                        --
+                    </span>
+
+                </div>
+
+
+                <!-- Charging -->
+
+                <div
+                    class="status-card"
+                    id="charging-card"
+                >
+
+                    <h3>
+                        Charging Status
+                    </h3>
+
+                    <p id="charging-status">
+                        --
+                    </p>
+
+                    <span
+                        id="charging-badge"
+                        class="status-badge"
+                    >
+                        --
+                    </span>
+
+                </div>
+
+
+                <!-- Anomaly -->
+
+                <div
+                    class="status-card"
+                    id="anomaly-card"
+                >
+
+                    <h3>
+                        Anomaly Detection
+                    </h3>
+
+                    <p id="anomaly-status">
+                        --
+                    </p>
+
+                    <span
+                        id="anomaly-badge"
+                        class="status-badge"
+                    >
+                        --
+                    </span>
+
+                </div>
+
+
+                <!-- Protection -->
+
+                <div
+                    class="status-card"
+                    id="protection-card"
+                >
+
+                    <h3>
+                        Protection
+                    </h3>
+
+                    <p id="protection-status">
+                        --
+                    </p>
+
+                    <span
+                        id="protection-badge"
+                        class="status-badge"
+                    >
+                        --
+                    </span>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================================================= -->
+        <!-- RECENT MONITORING HISTORY -->
+        <!-- ================================================= -->
+        
+        <section class="history-panel">
+        
+            <div class="section-heading">
+        
+                <div>
+        
+                    <h2>
+                        Recent Monitoring History
+                    </h2>
+        
+                    <p class="section-description">
+                        Latest readings recorded by the monitoring system.
+                    </p>
+        
+                </div>
+        
+                <span class="history-badge">
+                    AUTO REFRESH
+                </span>
+        
+            </div>
+        
+        
+            <div class="table-container">
+        
+                <table>
+        
+                    <thead>
+        
+                        <tr>
+        
+                            <th>Time</th>
+                            <th>Voltage</th>
+                            <th>Current</th>
+                            <th>Power</th>
+                            <th>Distance</th>
+                            <th>Vehicle</th>
+                            <th>Charging</th>
+                            <th>Anomaly</th>
+                            <th>Protection</th>
+        
+                        </tr>
+        
+                    </thead>
+        
+        
+                    <tbody id="history-table-body">
+        
+                        <tr>
+        
+                            <td colspan="9">
+                                Loading monitoring history...
+                            </td>
+        
+                        </tr>
+        
+                    </tbody>
+        
+                </table>
+        
+            </div>
+        
+        </section>
+
+
+       
+
+
+        <!-- ================================================= -->
+        <!-- FOOTER -->
+        <!-- ================================================= -->
+
+        <footer>
+
+            <div>
+
+                <strong>
+                    EV Charging Monitoring System
+                </strong>
+
+                <span>
+                    IoT-Based Intelligent Charging Safety Platform
+                </span>
+
+            </div>
+
+
+            <div>
+
+                Last Update:
+                <strong id="last-update">
+                    --
+                </strong>
+
+            </div>
+
+        </footer>
+
+    </main>
+
+
+    <script
+        src="{{ url_for('static', filename='js/dashboard.js') }}"
+    ></script>
+
+</body>
+
+</html>

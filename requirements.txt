@@ -1,0 +1,30 @@
+# EV Charging Station Monitoring System - Python Dependencies
+
+# Web Framework
+Flask==2.3.3
+Werkzeug==2.3.7
+
+# Machine Learning and Data Science
+scikit-learn>=1.3.0  # >=1.3.0 for Windows pre-built wheels (1.3.0 requires build tools)
+numpy>=1.24.3
+pandas>=2.0.3
+
+# Environment and Configuration
+python-dotenv==1.0.0
+
+# Hardware Interface (Raspberry Pi ADC)
+# Adafruit_MCP3008==1.4.1  # Uncomment for Raspberry Pi deployment
+
+# Utilities
+requests==2.31.0
+
+# Optional: Development and Testing
+# pytest==7.4.0
+# pytest-cov==4.1.0
+# black==23.7.0
+# pylint==2.17.5
+
+# Note: For Raspberry Pi deployment, you may also need:
+# RPi.GPIO==0.7.0
+# Adafruit-GPIO==1.0.4
+# Adafruit-SPI==1.9.2
