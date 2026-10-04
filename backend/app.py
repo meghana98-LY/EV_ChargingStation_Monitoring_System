@@ -1,0 +1,31 @@
+import logging,signal
+from flask import Flask,jsonify,render_template,request
+from .config import LOG_DIR
+from .monitor import ChargingMonitor
+LOG_DIR.mkdir(parents=True,exist_ok=True)
+logging.basicConfig(level=logging.INFO,format="%(asctime)s %(levelname)s %(message)s",handlers=[logging.StreamHandler(),logging.FileHandler(LOG_DIR/"application.log")])
+app=Flask(__name__,template_folder="templates",static_folder="static")
+monitor=ChargingMonitor()
+@app.get("/")
+def index(): return render_template("dashboard.html")
+@app.get("/dashboard")
+def dashboard(): return render_template("dashboard.html")
+@app.get("/analytics")
+def analytics(): return render_template("analytics.html")
+@app.get("/api/monitor")
+def api_monitor(): return jsonify(monitor.latest)
+@app.get("/api/status")
+def api_status(): return jsonify(monitor.latest)
+@app.get("/api/history")
+def history(): return jsonify(monitor.db.recent(min(max(int(request.args.get("limit",200)),1),1000)))
+@app.get("/api/anomalies")
+def anomalies(): return jsonify(monitor.db.anomalies())
+@app.get("/api/protection")
+def protection(): return jsonify(monitor.db.protections())
+@app.post("/api/reset-protection")
+def reset(): monitor.reset_protection(); return jsonify(monitor.latest)
+def shutdown(*_): monitor.stop()
+if __name__=="__main__":
+    monitor.start(); signal.signal(signal.SIGINT,shutdown); signal.signal(signal.SIGTERM,shutdown)
+    try: app.run(host="0.0.0.0",port=5000,debug=False,use_reloader=False)
+    finally: monitor.stop()
