@@ -2,6 +2,7 @@
 import csv
 import logging
 import threading
+import time
 from datetime import datetime, timezone
 
 from .config import *
@@ -12,16 +13,17 @@ from .services.email_alert import EmailAlertService
 from .database.db import Database
 
 
+log = logging.getLogger(__name__)
+
+
 class ChargingMonitor:
     def __init__(self):
         self.db = Database()
-
         self.relay = RelayController(
             RELAY_GPIO,
             RELAY_ACTIVE_HIGH,
             HARDWARE_MODE,
         )
-
         self.sensors = SensorManager()
         self.detector = AnomalyDetector(ML_MODEL_PATH)
         self.email = EmailAlertService()
@@ -29,13 +31,17 @@ class ChargingMonitor:
         self.stop_event = threading.Event()
         self.protection_latched = threading.Event()
         self.lock = threading.Lock()
+        self.stop_lock = threading.Lock()
+
+        self.thread = None
+        self.stopped = False
 
         self.csv_path = TRAINING_DATA
         self.csv_path.parent.mkdir(parents=True, exist_ok=True)
 
         if not self.csv_path.exists():
-            with self.csv_path.open("w", newline="") as f:
-                writer = csv.writer(f)
+            with self.csv_path.open("w", newline="") as file:
+                writer = csv.writer(file)
                 writer.writerow([
                     "timestamp",
                     "voltage",
@@ -58,25 +64,40 @@ class ChargingMonitor:
         }
 
     def start(self):
-        self.relay.off()
+        with self.stop_lock:
+            if self.stopped:
+                raise RuntimeError(
+                    "ChargingMonitor cannot restart after shutdown"
+                )
 
-        threading.Thread(
-            target=self.loop,
-            daemon=True,
-            name="ChargingMonitor",
-        ).start()
+            if self.thread and self.thread.is_alive():
+                return
 
-    def save_training_row(self, s):
+            self.stop_event.clear()
+            self.relay.off()
+
+            self.thread = threading.Thread(
+                target=self.loop,
+                daemon=True,
+                name="ChargingMonitor",
+            )
+            self.thread.start()
+
+        log.info("Charging monitor started")
+
+    def save_training_row(self, snapshot):
         timestamp = datetime.fromtimestamp(
-            s.timestamp, timezone.utc
+            snapshot.timestamp,
+            timezone.utc,
         ).isoformat()
 
-        with self.csv_path.open("a", newline="") as f:
-            csv.writer(f).writerow([
+        with self.csv_path.open("a", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow([
                 timestamp,
-                s.voltage,
-                s.current,
-                s.power,
+                snapshot.voltage,
+                snapshot.current,
+                snapshot.power,
             ])
 
     def update_latest(self, values):
@@ -86,12 +107,9 @@ class ChargingMonitor:
     def loop(self):
         while not self.stop_event.is_set():
 
-            # AFTER ANOMALY:
-            # Do not read voltage/current or run predictions.
-            # Only keep checking the ultrasonic sensor.
+            # After a protection trip, only check vehicle presence.
+            # Do not sample voltage/current or run ML predictions.
             if self.protection_latched.is_set():
-                self.relay.off()
-
                 try:
                     vehicle, distance = (
                         self.sensors.ultrasonic.vehicle_present(
@@ -100,11 +118,13 @@ class ChargingMonitor:
                         )
                     )
 
+                    self.relay.off()
+
                     self.update_latest({
+                        "state": "PROTECTION_TRIPPED",
+                        "relay_on": False,
                         "vehicle_present": vehicle,
                         "distance_cm": distance,
-                        "relay_on": False,
-                        "state": "PROTECTION_TRIPPED",
                         "reason": (
                             "ANOMALY_LATCHED_VEHICLE_PRESENT"
                             if vehicle
@@ -113,15 +133,14 @@ class ChargingMonitor:
                     })
 
                 except Exception:
-                    logging.exception(
-                        "Ultrasonic check failed during protection"
+                    log.exception(
+                        "Vehicle detection failed during protection"
                     )
-
                     self.relay.off()
 
                     self.update_latest({
-                        "relay_on": False,
                         "state": "PROTECTION_TRIPPED",
+                        "relay_on": False,
                         "reason": "ANOMALY_LATCHED_VEHICLE_CHECK_ERROR",
                     })
 
@@ -129,180 +148,161 @@ class ChargingMonitor:
                 continue
 
             try:
-                # Continuous sensor sampling while protection is clear.
-                s = self.sensors.read()
+                # Read voltage, vehicle presence and current sensors.
+                snapshot = self.sensors.read()
 
                 anomaly = None
                 score = None
                 state = "IDLE"
                 reason = "NO_VEHICLE"
 
-                # VEHICLE ABSENT:
-                # Continue sensing, but do not run anomaly prediction.
-                if not s.vehicle_present:
+                # No vehicle: charging and prediction remain disabled.
+                if not snapshot.vehicle_present:
                     self.relay.off()
                     state = "IDLE"
                     reason = "NO_VEHICLE"
 
-                # VEHICLE PRESENT:
-                # Require a trained model and valid sensor readings.
-                elif not self.detector.available:
-                    self.relay.off()
-                    state = "MODEL_NOT_READY"
-                    reason = "ISOLATION_FOREST_MODEL_MISSING"
-
+                # A vehicle is present, but current sensing is unavailable.
                 elif (
-                    s.voltage is None
-                    or s.current is None
-                    or s.power is None
+                    ML_REQUIRES_CURRENT
+                    and not snapshot.current_available
                 ):
                     self.relay.off()
                     state = "SENSOR_ERROR"
-                    reason = "REQUIRED_SENSOR_READING_MISSING"
+                    reason = "CURRENT_SENSOR_NOT_AVAILABLE"
 
+                # A vehicle is present: run anomaly detection.
                 else:
-                    # Predict only when a vehicle is detected.
+                    if not self.detector.available:
+                        raise RuntimeError(
+                            "Isolation Forest model is unavailable"
+                        )
+
                     anomaly = self.detector.predict(
-                        s.voltage,
-                        s.current,
-                        s.power,
+                        snapshot.voltage,
+                        snapshot.current,
+                        snapshot.power,
                     )
 
-                    score = anomaly["anomaly_score"]
+                    score = anomaly.get("anomaly_score")
 
-                    if anomaly["is_anomaly"]:
-                        # Switch off and latch before external operations.
-                        self.relay.off()
+                    if anomaly.get("is_anomaly", False):
+                        # Latch protection immediately and switch OFF.
                         self.protection_latched.set()
+                        self.relay.off()
 
                         state = "PROTECTION_TRIPPED"
-                        reason = (
-                            "Isolation Forest classified the combination "
-                            "of voltage, current, and power as anomalous."
-                        )
+                        reason = "ANOMALY_DETECTED"
 
                     else:
                         self.relay.on()
                         state = "CHARGING"
                         reason = "NORMAL_PREDICTION"
 
-                snapshot = {
-                    "timestamp": s.timestamp,
+                # Publish the current reading and protection status.
+                values = {
+                    "timestamp": snapshot.timestamp,
                     "state": state,
                     "relay_on": self.relay.active,
                     "reason": reason,
-                    "vehicle_present": s.vehicle_present,
-                    "distance_cm": s.distance_cm,
-                    "voltage": s.voltage,
-                    "current": s.current,
-                    "power": s.power,
+                    "vehicle_present": snapshot.vehicle_present,
+                    "distance_cm": snapshot.distance_cm,
+                    "voltage": snapshot.voltage,
+                    "current": snapshot.current,
+                    "power": snapshot.power,
                     "anomaly_score": score,
                     "anomaly": anomaly,
-                    "current_available": s.current_available,
+                    "current_available": snapshot.current_available,
                 }
 
-                self.update_latest(snapshot)
+                self.update_latest(values)
 
-                # Store this reading, including the reading that tripped
-                # protection. The database receives named arguments.
+                # Store the sensor reading.
                 try:
                     self.db.record_sensor_reading(
-                        voltage=s.voltage,
-                        current=s.current,
-                        power=s.power,
+                        voltage=snapshot.voltage,
+                        current=snapshot.current,
+                        power=snapshot.power,
                         anomaly_score=score,
-                        vehicle_present=s.vehicle_present,
+                        vehicle_present=snapshot.vehicle_present,
                         charging_active=self.relay.active,
                         protection_status=state,
                     )
                 except Exception:
-                    logging.exception(
-                        "Failed to store sensor reading"
-                    )
+                    log.exception("Failed to store sensor reading")
 
-                # Do not append a training sample after a trip.
+                # Only save training data when protection is not latched.
                 if not self.protection_latched.is_set():
                     try:
-                        self.save_training_row(s)
+                        self.save_training_row(snapshot)
                     except Exception:
-                        logging.exception(
-                            "Failed to save training data"
-                        )
+                        log.exception("Failed to save training data")
 
-                # Send one email attempt for this protection trip.
-                if anomaly and anomaly["is_anomaly"]:
+                # An anomaly triggers the alert and protection records.
+                if anomaly and anomaly.get("is_anomaly", False):
                     event = {
                         "timestamp": datetime.fromtimestamp(
-                            s.timestamp, timezone.utc
+                            snapshot.timestamp,
+                            timezone.utc,
                         ).isoformat(),
-                        "vehicle_present": s.vehicle_present,
-                        "voltage": s.voltage,
-                        "current": s.current,
-                        "power": s.power,
+                        "vehicle_present": snapshot.vehicle_present,
+                        "voltage": snapshot.voltage,
+                        "current": snapshot.current,
+                        "power": snapshot.power,
                         "anomaly_score": score,
                         "reason": reason,
                     }
 
-                    email_sent = False
-
                     try:
-                        email_sent = (
-                            self.email.send_anomaly_alert(event)
-                        )
+                        sent = self.email.send_anomaly_alert(event)
 
-                        if email_sent:
-                            logging.info(
-                                "Anomaly alert email sent successfully"
-                            )
+                        if sent:
+                            log.info("Anomaly alert email sent successfully")
                         else:
-                            logging.warning(
-                                "Anomaly email was not sent. "
-                                "Check email configuration and cooldown."
+                            log.warning(
+                                "Anomaly email was not sent; "
+                                "check email settings and cooldown"
                             )
-
                     except Exception:
-                        logging.exception(
-                            "Failed to send anomaly email"
-                        )
+                        log.exception("Failed to send anomaly email")
 
                     try:
                         self.db.record_anomaly(
-                            voltage=s.voltage,
-                            current=s.current,
-                            power=s.power,
+                            voltage=snapshot.voltage,
+                            current=snapshot.current,
+                            power=snapshot.power,
                             anomaly_score=score,
                             reason=reason,
                         )
                     except Exception:
-                        logging.exception(
-                            "Failed to store anomaly event"
-                        )
+                        log.exception("Failed to store anomaly event")
 
                     try:
                         self.db.record_protection_event(
                             reason=reason,
-                            vehicle_present=s.vehicle_present,
+                            vehicle_present=snapshot.vehicle_present,
                             charging_active=False,
-                            voltage=s.voltage,
-                            current=s.current,
-                            power=s.power,
+                            voltage=snapshot.voltage,
+                            current=snapshot.current,
+                            power=snapshot.power,
                             anomaly_score=score,
                         )
                     except Exception:
-                        logging.exception(
-                            "Failed to store protection event"
-                        )
+                        log.exception("Failed to store protection event")
 
-                    logging.warning(
+                    log.warning(
                         "Protection tripped. Relay OFF. "
                         "Voltage/current sampling and prediction paused; "
                         "vehicle-presence checks continue."
                     )
 
             except Exception as exc:
-                logging.exception("Monitoring error")
+                log.exception("Monitoring error")
 
-                self.relay.off()
+                try:
+                    self.relay.off()
+                except Exception:
+                    log.exception("Failed to switch relay OFF after error")
 
                 self.update_latest({
                     "state": "SENSOR_ERROR",
@@ -313,7 +313,7 @@ class ChargingMonitor:
             self.stop_event.wait(SAMPLE_INTERVAL_SECONDS)
 
     def reset_protection(self):
-        # Always keep the relay OFF during reset.
+        # Always switch OFF before clearing the protection latch.
         self.relay.off()
 
         with self.lock:
@@ -327,15 +327,46 @@ class ChargingMonitor:
 
         self.protection_latched.clear()
 
-        logging.info(
+        log.info(
             "Protection reset manually. Sensor monitoring resumed."
         )
 
     def stop(self):
-        self.stop_event.set()
-        self.relay.off()
+        # Make shutdown safe if multiple callers invoke stop().
+        with self.stop_lock:
+            if self.stopped:
+                return
+
+            self.stopped = True
+            self.stop_event.set()
+            thread = self.thread
+
+        # Do not close GPIO resources while the loop is running.
+        if thread and thread.is_alive():
+            thread.join(
+                timeout=max(SAMPLE_INTERVAL_SECONDS + 5, 10)
+            )
+
+        if thread and thread.is_alive():
+            log.error(
+                "Monitoring thread did not stop in time. "
+                "Hardware cleanup was deferred."
+            )
+            return
+
+        try:
+            self.relay.off()
+        except Exception:
+            log.exception("Failed to switch relay OFF during shutdown")
 
         try:
             self.sensors.close()
-        finally:
+        except Exception:
+            log.exception("Failed to close sensors")
+
+        try:
             self.relay.close()
+        except Exception:
+            log.exception("Failed to close relay")
+
+        log.info("Charging monitor stopped")

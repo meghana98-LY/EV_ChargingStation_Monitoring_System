@@ -38,3 +38,5 @@ SMTP_PORT = env_int("SMTP_PORT", 587)
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "")
 ALERT_EMAIL = os.getenv("ALERT_EMAIL", "")
+class Config:
+    DATABASE_URL = os.getenv("DATABASE_URL", "")
