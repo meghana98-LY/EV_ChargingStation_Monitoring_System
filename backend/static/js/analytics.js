@@ -1,121 +1,202 @@
+"use strict";
+
 let mainChart = null;
 let anomalyChart = null;
+let analyticsLoading = false;
 
 function formatTime(value) {
-    const date = typeof value === "number"
-        ? new Date(value < 1e12 ? value * 1000 : value)
-        : new Date(value);
+  const date =
+    typeof value === "number"
+      ? new Date(value < 1e12 ? value * 1000 : value)
+      : new Date(value);
 
-    return Number.isNaN(date.getTime())
-        ? String(value)
-        : date.toLocaleTimeString();
+  return Number.isNaN(date.getTime())
+    ? String(value)
+    : date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+}
+
+function chartOptions(yTitle, showZero = false) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    interaction: {
+      mode: "index",
+      intersect: false,
+    },
+    plugins: {
+      legend: {
+        position: "top",
+        labels: {
+          color: "#f8fafc",
+          usePointStyle: false,
+          boxWidth: 28,
+          padding: 18,
+          font: {
+            size: 13,
+            weight: "600",
+          },
+        },
+      },
+      tooltip: {
+        backgroundColor: "#0f172a",
+        titleColor: "#38bdf8",
+        bodyColor: "#f8fafc",
+        borderColor: "#334155",
+        borderWidth: 1,
+        padding: 12,
+        displayColors: true,
+      },
+    },
+    scales: {
+      x: {
+        grid: {
+          color: "rgba(148, 163, 184, 0.09)",
+        },
+        ticks: {
+          color: "#cbd5e1",
+          maxTicksLimit: 10,
+          maxRotation: 0,
+          autoSkip: true,
+        },
+        border: {
+          color: "#334155",
+        },
+      },
+      y: {
+        beginAtZero: showZero,
+        title: {
+          display: Boolean(yTitle),
+          text: yTitle,
+          color: "#cbd5e1",
+        },
+        grid: {
+          color: "rgba(148, 163, 184, 0.12)",
+        },
+        ticks: {
+          color: "#cbd5e1",
+        },
+        border: {
+          color: "#334155",
+        },
+      },
+    },
+  };
+}
+
+function lineDataset(label, data, color) {
+  return {
+    label,
+    data,
+    borderColor: color,
+    backgroundColor: color,
+    borderWidth: 3,
+    pointRadius: 2.5,
+    pointHoverRadius: 6,
+    pointBackgroundColor: color,
+    pointBorderWidth: 0,
+    tension: 0.25,
+    fill: false,
+    spanGaps: false,
+  };
 }
 
 async function loadAnalytics() {
-    try {
-        const response = await fetch("/api/history?limit=200", {
-            cache: "no-store"
-        });
+  if (analyticsLoading) return;
+  analyticsLoading = true;
 
-        if (!response.ok) {
-            throw new Error(`History API returned HTTP ${response.status}`);
-        }
+  try {
+    const response = await fetch("/api/history?limit=200", {
+      cache: "no-store",
+    });
 
-        const rows = await response.json();
-
-        if (!Array.isArray(rows)) {
-            throw new Error("History API did not return a list");
-        }
-
-        // Database queries often return newest rows first.
-        rows.reverse();
-
-        const labels = rows.map(row => formatTime(row.timestamp));
-
-        const mainData = {
-            labels,
-            datasets: [
-                {
-                    label: "Voltage (V)",
-                    data: rows.map(row => row.voltage ?? null),
-                    borderColor: "#2563eb",
-                    tension: 0.2
-                },
-                {
-                    label: "Current (A)",
-                    data: rows.map(row => row.current ?? null),
-                    borderColor: "#dc2626",
-                    tension: 0.2
-                },
-                {
-                    label: "Power (W)",
-                    data: rows.map(row => row.power ?? null),
-                    borderColor: "#d97706",
-                    tension: 0.2
-                }
-            ]
-        };
-
-        const anomalyData = {
-            labels,
-            datasets: [{
-                label: "Isolation Forest Anomaly Score",
-                data: rows.map(row => row.anomaly_score ?? null),
-                borderColor: "#7c3aed",
-                tension: 0.2,
-                spanGaps: false
-            }]
-        };
-
-        if (!mainChart) {
-            mainChart = new Chart(
-                document.getElementById("mainChart"),
-                {
-                    type: "line",
-                    data: mainData,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        animation: false,
-                        scales: {
-                            x: { ticks: { maxTicksLimit: 10 } },
-                            y: { beginAtZero: false }
-                        }
-                    }
-                }
-            );
-        } else {
-            mainChart.data = mainData;
-            mainChart.update("none");
-        }
-
-        if (!anomalyChart) {
-            anomalyChart = new Chart(
-                document.getElementById("anomalyChart"),
-                {
-                    type: "line",
-                    data: anomalyData,
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        animation: false,
-                        scales: {
-                            x: { ticks: { maxTicksLimit: 10 } },
-                            y: { beginAtZero: false }
-                        }
-                    }
-                }
-            );
-        } else {
-            anomalyChart.data = anomalyData;
-            anomalyChart.update("none");
-        }
-    } catch (error) {
-        console.error("Analytics loading failed:", error);
+    if (!response.ok) {
+      throw new Error(`History API returned HTTP ${response.status}`);
     }
+
+    const rows = await response.json();
+
+    if (!Array.isArray(rows)) {
+      throw new Error("History API did not return a list");
+    }
+
+    // The API may return newest-first results.
+    const orderedRows = [...rows].reverse();
+
+    const labels = orderedRows.map((row) => formatTime(row.timestamp));
+
+    const mainData = {
+      labels,
+      datasets: [
+        lineDataset(
+          "Voltage (V)",
+          orderedRows.map((row) => row.voltage ?? null),
+          "#22d3ee",
+        ),
+        lineDataset(
+          "Current (A)",
+          orderedRows.map((row) => row.current ?? null),
+          "#00f59b",
+        ),
+        lineDataset(
+          "Power (W)",
+          orderedRows.map((row) => row.power ?? null),
+          "#ff9800",
+        ),
+      ],
+    };
+
+    const anomalyData = {
+      labels,
+      datasets: [
+        lineDataset(
+          "Isolation Forest Anomaly Score",
+          orderedRows.map((row) => row.anomaly_score ?? null),
+          "#a78bfa",
+        ),
+      ],
+    };
+
+    const mainCanvas = document.getElementById("mainChart");
+    const anomalyCanvas = document.getElementById("anomalyChart");
+
+    if (mainCanvas) {
+      if (!mainChart) {
+        mainChart = new Chart(mainCanvas, {
+          type: "line",
+          data: mainData,
+          options: chartOptions("Sensor value", true),
+        });
+      } else {
+        mainChart.data = mainData;
+        mainChart.update("none");
+      }
+    }
+
+    if (anomalyCanvas) {
+      if (!anomalyChart) {
+        anomalyChart = new Chart(anomalyCanvas, {
+          type: "line",
+          data: anomalyData,
+          options: chartOptions("Anomaly score", false),
+        });
+      } else {
+        anomalyChart.data = anomalyData;
+        anomalyChart.update("none");
+      }
+    }
+  } catch (error) {
+    console.error("Analytics loading failed:", error);
+  } finally {
+    analyticsLoading = false;
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    loadAnalytics();
-    setInterval(loadAnalytics, 5000);
+  loadAnalytics();
+  setInterval(loadAnalytics, 5000);
 });

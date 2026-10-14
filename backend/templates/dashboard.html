@@ -1,2 +1,194 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EV Charging Monitor</title><link rel="stylesheet" href="/static/css/style.css"></head><body><header><h1>EV Charging Station Monitor</h1><nav><a href="/dashboard">Dashboard</a><a href="/analytics">Analytics</a></nav></header><main class="grid">
-<div class="card"><h3>Vehicle</h3><div id="vehicle" class="value">--</div></div><div class="card"><h3>Charging</h3><div id="charging" class="value">--</div></div><div class="card"><h3>Relay</h3><div id="relay" class="value">--</div></div><div class="card"><h3>Voltage</h3><div id="voltage" class="value">--</div></div><div class="card"><h3>Current</h3><div id="current" class="value">--</div></div><div class="card"><h3>Power</h3><div id="power" class="value">--</div></div><div class="card"><h3>Anomaly</h3><div id="anomaly" class="value">--</div></div><div class="card"><h3>Protection</h3><div id="protection" class="value">--</div></div><div class="card wide"><h3>Reason</h3><div id="reason" class="value">--</div></div><div class="card wide"><button id="reset">Reset Protection</button></div></main><script src="/static/js/dashboard.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EV Charging Station Monitoring Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css" />
+  </head>
+  <body>
+    <div class="app-layout">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-icon">ϟ</span>
+          <span>EV Monitor</span>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="/dashboard" class="nav-link active">
+            <span>▦</span> Dashboard
+          </a>
+          <a href="/analytics" class="nav-link"> <span>⌁</span> Analytics </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <span class="status-dot"></span>
+          Live Monitoring
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="page-header">
+          <div>
+            <p class="eyebrow">IOT MONITORING SYSTEM</p>
+            <h1>EV Charging Station Dashboard</h1>
+            <p class="subtitle">
+              Real-time sensor monitoring and intelligent protection
+            </p>
+          </div>
+
+          <div class="header-status">
+            <span class="status-dot"></span>
+            <span>System Monitor</span>
+            <div id="clock">--:--:--</div>
+          </div>
+        </header>
+
+        <section class="metrics-grid">
+          <article class="metric-card voltage-card">
+            <div class="metric-heading">
+              <span class="metric-icon">ϟ</span>
+              <h2>Voltage</h2>
+            </div>
+            <div class="metric-reading">
+              <span id="voltage" class="value">--</span>
+              <span class="unit">V</span>
+            </div>
+            <p class="metric-description">Live voltage reading</p>
+          </article>
+
+          <article class="metric-card current-card">
+            <div class="metric-heading">
+              <span class="metric-icon">↗</span>
+              <h2>Current</h2>
+            </div>
+            <div class="metric-reading">
+              <span id="current" class="value">--</span>
+              <span class="unit">A</span>
+            </div>
+            <p class="metric-description">Live current reading</p>
+          </article>
+
+          <article class="metric-card power-card">
+            <div class="metric-heading">
+              <span class="metric-icon">ϟ</span>
+              <h2>Power</h2>
+            </div>
+            <div class="metric-reading">
+              <span id="power" class="value">--</span>
+              <span class="unit">W</span>
+            </div>
+            <p class="metric-description">Calculated electrical power</p>
+          </article>
+
+          <article class="metric-card status-card">
+            <div class="metric-heading">
+              <span class="metric-icon">◉</span>
+              <h2>ML Prediction</h2>
+            </div>
+            <div id="anomaly" class="status-reading value">--</div>
+            <p class="metric-description">Anomaly detection status</p>
+          </article>
+        </section>
+
+        <section class="details-grid">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Charging Status</h2>
+                <p>Vehicle and charging-control information</p>
+              </div>
+              <span class="panel-indicator"></span>
+            </div>
+
+            <div class="detail-list">
+              <div class="detail-row">
+                <span>Vehicle Detection</span>
+                <strong id="vehicle" class="value">--</strong>
+              </div>
+              <div class="detail-row">
+                <span>Charging State</span>
+                <strong id="charging" class="value">--</strong>
+              </div>
+              <div class="detail-row">
+                <span>Relay State</span>
+                <strong id="relay" class="value">--</strong>
+              </div>
+              <div class="detail-row">
+                <span>Protection</span>
+                <strong id="protection" class="value">--</strong>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h2>Protection Information</h2>
+                <p>Current monitoring and safety state</p>
+              </div>
+            </div>
+
+            <div class="reason-box">
+              <span class="reason-label">Latest Status Reason</span>
+              <p id="reason" class="value">Waiting for sensor data...</p>
+            </div>
+
+            <div class="anomaly-info">
+              <span class="info-symbol">i</span>
+              <p>
+                Charging protection is controlled by the backend. Resetting
+                protection does not guarantee that charging will resume; a
+                detected anomaly may immediately trip it again.
+              </p>
+            </div>
+
+            <button id="reset" class="reset-button" type="button">
+              Reset Protection
+            </button>
+          </article>
+        </section>
+
+        <section class="panel logs-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Recent Sensor Readings</h2>
+              <p>Latest measurements reported by the monitoring system</p>
+            </div>
+            <span class="live-label">
+              <span class="status-dot"></span> LIVE
+            </span>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="readings-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Voltage</th>
+                  <th>Current</th>
+                  <th>Power</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="readings-body">
+                <tr>
+                  <td colspan="5" class="empty-state">
+                    Waiting for sensor readings...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <footer class="page-footer">
+          <span>EV Charging Station Monitoring System</span>
+          <span>Raspberry Pi · IoT · Isolation Forest</span>
+        </footer>
+      </main>
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+  </body>
+</html>

@@ -1,1 +1,114 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EV Analytics</title><link rel="stylesheet" href="/static/css/style.css"><script src="https://cdn.jsdelivr.net/npm/chart.js"></script></head><body><header><h1>Charging Analytics</h1><nav><a href="/dashboard">Dashboard</a><a href="/analytics">Analytics</a></nav></header><main><section class="chart-card"><h2>Voltage, Current and Power</h2><canvas id="mainChart"></canvas></section><section class="chart-card"><h2>Isolation Forest Anomaly Score</h2><canvas id="anomalyChart"></canvas></section></main><script src="/static/js/analytics.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EV Charging Analytics</title>
+
+    <link rel="stylesheet" href="/static/css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+
+  <body>
+    <div class="app-layout">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-icon">ϟ</span>
+          <span>EV Monitor</span>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="/dashboard" class="nav-link"> <span>▦</span> Dashboard </a>
+          <a href="/analytics" class="nav-link active">
+            <span>⌁</span> Analytics
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <span class="status-dot"></span>
+          Live Monitoring
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="page-header">
+          <div>
+            <p class="eyebrow">IOT MONITORING SYSTEM</p>
+            <h1>Charging Analytics</h1>
+            <p class="subtitle">
+              Electrical measurements and intelligent anomaly analysis
+            </p>
+          </div>
+
+          <a href="/dashboard" class="back-link"> ← Dashboard </a>
+        </header>
+
+        <section class="analytics-summary">
+          <article class="metric-card voltage-card">
+            <div class="metric-heading">
+              <span class="metric-icon">ϟ</span>
+              <h2>Electrical Monitoring</h2>
+            </div>
+            <p class="metric-description">
+              Voltage, current and power measurements over time
+            </p>
+          </article>
+
+          <article class="metric-card status-card">
+            <div class="metric-heading">
+              <span class="metric-icon">◉</span>
+              <h2>Anomaly Detection</h2>
+            </div>
+            <p class="metric-description">
+              Isolation Forest anomaly-score history
+            </p>
+          </article>
+        </section>
+
+        <section class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Voltage, Current and Power</h2>
+              <p>Historical sensor measurements</p>
+            </div>
+            <span class="chart-tag">SENSOR DATA</span>
+          </div>
+
+          <div class="chart-container">
+            <canvas id="mainChart"></canvas>
+          </div>
+        </section>
+
+        <section class="panel chart-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Isolation Forest Anomaly Score</h2>
+              <p>Model scores used to identify unusual measurements</p>
+            </div>
+            <span class="chart-tag">ML ANALYSIS</span>
+          </div>
+
+          <div class="chart-container">
+            <canvas id="anomalyChart"></canvas>
+          </div>
+
+          <div class="chart-note">
+            <span class="status-dot"></span>
+            <p>
+              Interpret anomaly scores according to the trained model's decision
+              threshold. The chart does not independently control the charging
+              relay.
+            </p>
+          </div>
+        </section>
+
+        <footer class="page-footer">
+          <span>EV Charging Station Monitoring System</span>
+          <span>Raspberry Pi · IoT · Isolation Forest</span>
+        </footer>
+      </main>
+    </div>
+
+    <script src="/static/js/analytics.js"></script>
+  </body>
+</html>
